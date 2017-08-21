@@ -11,10 +11,15 @@ export default class Entity {
   }
 
   setXY(x, y) {
-    this.loc.x = x;
-    this.loc.y = y;
+    this.loc.set(x, y);
     this.gfx.x = x;
     this.gfx.y = y;
+    return this;
+  }
+
+  setLoc(p) {
+    this.setXY(p.x, p.y);
+    return this;
   }
 
   update() {

@@ -1,24 +1,42 @@
 import React from 'react';
 import ClientGame from './ClientGame';
 
-export default class ReactGame extends React.PureComponent {
+import {TOOL} from './managers/UIManager';
+
+export default class ReactGame extends React.Component {
+  constructor() {
+    super();
+    this.state = {tool: TOOL.SELECT.id};
+  }
+
   gameMounted = (c) => {
-    console.log(this.node, this.game);
     if (!!c) this.node = c;
-    if (!this.game) {
-      this.game = new ClientGame();
-      const view = this.game.createRenderer();
-      this.node.appendChild(view);
-      this.game.start();
-    }
+    if (!this.game) this.createGame();
   };
 
+  createGame() {
+    this.game = new ClientGame();
+    const view = this.game.createRenderer();
+    this.node.appendChild(view);
+    this.game.start();
+    this.game.ui.on('change', (state) => this.setState(state));
+  }
+
+  componentDidUpdate() {
+    if (!(this.game instanceof ClientGame) && !!this.node) {
+      this.node.removeChild(this.node.firstNode);
+      this.createGame();
+    }
+  }
+
   render() {
-    console.log('GAME RENDER');
     return (<div>
       <div id="game" ref={this.gameMounted}/>
       <div>
         <button onClick={() => this.game.spawn()}>spawn</button>
+        <span style={{background: this.state.tool === TOOL.SELECT.id ? 'red' : 'transparent'}}>S</span>
+        <span style={{background: this.state.tool === TOOL.PAINT.id ? 'red' : 'transparent'}}>P</span>
+        <span style={{background: this.state.tool === TOOL.BUILD_WALL.id ? 'red' : 'transparent'}}>B</span>
       </div>
     </div>);
   }
