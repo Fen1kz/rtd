@@ -6,8 +6,6 @@ require('source-map-support').install();
 
 if (fs.existsSync('.env')) require('dotenv').config();
 
-if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET undefined');
-
 // global.NODE_ROOT = path.resolve(__dirname);
 global.GLOBAL_VERSION = require('./package.json').version;
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';

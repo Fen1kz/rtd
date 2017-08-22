@@ -1,4 +1,5 @@
 import * as PIXI from 'pixi.js'
+import {CELL_SIZE} from '../Cell';
 
 class Tool {
   constructor(id, events) {
@@ -33,7 +34,7 @@ const SELECT = new Tool('SELECT', {
 
 const PAINT = new Tool('PAINT', {
   mousedown(e) {
-    this.game.cliffs.lineStyle(5, 0x0000FF);
+    this.game.cliffs.lineStyle(CELL_SIZE / 2, 0x0000FF);
     this.prev = e.data.global.clone();
     this.game.stage.on('mousemove', this.mousemove);
   }
