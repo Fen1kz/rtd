@@ -54,16 +54,16 @@ PAINT.mousemove = (function (e) {
   this.prev = e.data.global.clone();
 }).bind(PAINT);
 
-const BUILD_WALL = new Tool('BUILD_WALL', {
+const SET_BASE = new Tool('SET_BASE', {
   click(e) {
-    this.game.addWall(e.data.global)
+    this.game.setBase(e.data.global)
   }
 });
 
 export const TOOL = {
   SELECT
   , PAINT
-  , BUILD_WALL
+  , SET_BASE
 };
 
 export default class UIManager extends PIXI.utils.EventEmitter {
@@ -92,7 +92,7 @@ export default class UIManager extends PIXI.utils.EventEmitter {
           this.selectTool(TOOL.PAINT);
           break;
         case 51:
-          this.selectTool(TOOL.BUILD_WALL);
+          this.selectTool(TOOL.SET_BASE);
           break;
         default:
           console.log(e.keyCode);

@@ -8,13 +8,15 @@ export default class Level {
   }
 
   getCell(x, y) {
+    x = Math.floor(x);
+    y = Math.floor(y);
     if (x < 0 || x >= this.width || y < 0 || y >= this.height) return null;
     return this.cells[x + y * this.width]
   }
 
   findCell(loc) {
-    const x = Math.round(loc.x);
-    const y = Math.round(loc.y);
+    const x = Math.floor(loc.x / CELL_SIZE);
+    const y = Math.floor(loc.y / CELL_SIZE);
     return this.getCell(x, y);
   }
 
@@ -27,14 +29,22 @@ export default class Level {
     }
 
     this.cells.forEach((cell) => {
-      cell.N = this.getCell(cell.x, cell.y - 1);
-      cell.NE = this.getCell(cell.x + 1, cell.y - 1);
-      cell.E = this.getCell(cell.x + 1, cell.y);
-      cell.SE = this.getCell(cell.x + 1, cell.y + 1);
-      cell.S = this.getCell(cell.x, cell.y + 1);
-      cell.SW = this.getCell(cell.x - 1, cell.y + 1);
-      cell.W = this.getCell(cell.x - 1, cell.y);
-      cell.NW = this.getCell(cell.x - 1, cell.y - 1);
+      cell.near4 = [
+        this.getCell(cell.x, cell.y - 1)
+        , this.getCell(cell.x + 1, cell.y)
+        , this.getCell(cell.x, cell.y + 1)
+        , this.getCell(cell.x - 1, cell.y)
+      ].filter(c => !!c);
+      cell.near8 = [
+        this.getCell(cell.x, cell.y - 1)
+        , this.getCell(cell.x + 1, cell.y - 1)
+        , this.getCell(cell.x + 1, cell.y)
+        , this.getCell(cell.x + 1, cell.y + 1)
+        , this.getCell(cell.x, cell.y + 1)
+        , this.getCell(cell.x - 1, cell.y + 1)
+        , this.getCell(cell.x - 1, cell.y)
+        , this.getCell(cell.x - 1, cell.y - 1)
+      ].filter(c => !!c);
     });
 
     return this;
@@ -52,30 +62,44 @@ export default class Level {
     });
   }
 
-  recalculatePathing(x, y) {
+  recalculatePathing(rootExit) {
     this.cells.forEach(c => {
       c.distance = void 0;
       c.exit = void 0;
+      c.base = void 0;
     });
 
-    const rootExit = this.getCell(x, y);
     rootExit.base = true;
     rootExit.distance = 0;
 
-    const frontier = [];
-    frontier.push(rootExit);
+    const frontier = [rootExit];
 
-    let ops = 0, cell;
-    while (frontier.length > 0 && ops++ < 2e3) {
-      cell = frontier.shift();
-      cell.getNear().forEach(near => {
-        if (!near.wall && near.distance === void 0) {
+    for (let i = 0; i < frontier.length; ++i) {
+      const cell = frontier[i];
+      cell.near4.forEach(near => {
+        if (near.distance === void 0 && !(cell.wall && !near.wall)) {
           near.distance = 1 + cell.distance;
-          near.exit = cell;
+          if (near.wall) {
+            near.distance = 1000;
+          }
           frontier.push(near);
         }
       });
     }
+
+    this.cells.forEach(cell => {
+      let minNear, minDist = 0;
+      cell.near8.forEach(near => {
+        const dist = near.distance - cell.distance;
+        if (dist < minDist) {
+          minNear = near;
+          minDist = dist;
+        }
+      });
+      if (minNear) {
+        cell.exit = minNear;
+      }
+    });
   }
 
 }

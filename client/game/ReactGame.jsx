@@ -36,7 +36,7 @@ export default class ReactGame extends React.Component {
         <button onClick={() => this.game.spawn()}>spawn</button>
         <span style={{background: this.state.tool === TOOL.SELECT.id ? 'red' : 'transparent'}}>S</span>
         <span style={{background: this.state.tool === TOOL.PAINT.id ? 'red' : 'transparent'}}>P</span>
-        <span style={{background: this.state.tool === TOOL.BUILD_WALL.id ? 'red' : 'transparent'}}>B</span>
+        <span style={{background: this.state.tool === TOOL.SET_BASE.id ? 'red' : 'transparent'}}>B</span>
       </div>
     </div>);
   }

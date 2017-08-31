@@ -7,8 +7,6 @@ export default class Entity {
   gfx = new Graphics();
 
   constructor() {
-    this.gfx.beginFill(0xFF0000);
-    this.gfx.drawCircle(CELL_SIZE / 2, CELL_SIZE / 2, CELL_SIZE / 2);
   }
 
   setXY(x, y) {
@@ -24,6 +22,10 @@ export default class Entity {
   }
 
   update() {
+
+  }
+
+  render() {
 
   }
 }

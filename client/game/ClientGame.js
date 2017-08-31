@@ -2,6 +2,7 @@ import * as PIXI from 'pixi.js';
 
 import Base from './entites/Base';
 import UIManager from "./managers/UIManager";
+import {Orders} from './entites/Unit';
 import Creep from './entites/Creep';
 import Level from './Level';
 import {CELL_SIZE} from './Cell';
@@ -33,7 +34,6 @@ export default class ClientGame {
 
   start() {
     this.base = new Base();
-    this.base.setXY(30, 15);
 
     this.addEntity(this.base);
 
@@ -57,11 +57,14 @@ export default class ClientGame {
     this.stage.addChild(this.gridGfx);
 
     this.level = new Level(Math.floor(WIDTH / CELL_SIZE), Math.floor(HEIGHT / CELL_SIZE)).fill();
+    window.level = this.level;
 
     this.level.cells.forEach(c => this.gridGfx.addChild(c.gfx));
 
     this.tick();
     this.recalculatePathing();
+
+    this.spawn();
   }
 
   recalculatePathing() {
@@ -74,8 +77,11 @@ export default class ClientGame {
     };
 
     this.level.recalculateWalls(probe);
-    this.level.recalculatePathing(this.base.loc.x, this.base.loc.y);
-    this.level.cells.forEach(c => c.render());
+    this.setBase({x: 30 * CELL_SIZE, y: 15 * CELL_SIZE});
+
+    this.entites.forEach(e => {
+      if (e.path) e.path = void 0;
+    })
   }
 
   tick = () => {
@@ -96,6 +102,13 @@ export default class ClientGame {
     return this;
   }
 
+  setBase(loc) {
+    const cell = this.level.findCell(loc);
+    this.base.setXY(cell.x, cell.y);
+    this.level.recalculatePathing(cell);
+    this.level.cells.forEach(c => c.render(this));
+  }
+
   addWall(p) {
     this.addEntity(new Creep()
       .setLoc(p))
@@ -103,7 +116,7 @@ export default class ClientGame {
 
   spawn() {
     const creep = new Creep();
-    creep.addMoveOrder(this.base.loc);
+    creep.addOrder(Orders.FOLLOW(this.base));
 
     this.addEntity(creep);
   }
