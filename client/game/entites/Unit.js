@@ -1,48 +1,46 @@
 import Entity from './Entity';
-import Point from '../geom/Point';
-import {CELL_SIZE} from '../Cell';
-
-const lerp = (s, e, t) => s + t * (e - s);
-const lerpPoint = (p0, p1, t) => new Point(lerp(p0.x, p1.x, t), lerp(p0.y, p1.y, t));
-const diagonalDist = (p0, p1) => {
-  let dx = p1.x - p0.x, dy = p1.y - p0.y;
-  return Math.max(Math.abs(dx), Math.abs(dy));
-};
-const roundPoint = (p) => new Point(Math.round(p.x), Math.round(p.y));
-
-const getLOS = (game, p0, p1) => {
-  const line = [];
-  const steps = diagonalDist(p0, p1);
-  for (let step = 0; step < steps; ++step) {
-    let t = steps === 0 ? 0 : step / steps;
-    const point = lerpPoint(p0, p1, t);
-    line.push(game.level.getCell(Math.round(point.x), Math.round(point.y)));
-  }
-  return line;
-};
+//
+// const lerp = (s, e, t) => s + t * (e - s);
+// const lerpPoint = (p0, p1, t) => new Point(lerp(p0.x, p1.x, t), lerp(p0.y, p1.y, t));
+// const diagonalDist = (p0, p1) => {
+//   let dx = p1.x - p0.x, dy = p1.y - p0.y;
+//   return Math.max(Math.abs(dx), Math.abs(dy));
+// };
+// const roundPoint = (p) => new Point(Math.round(p.x), Math.round(p.y));
+//
+// const getLOS = (game, p0, p1) => {
+//   const line = [];
+//   const steps = diagonalDist(p0, p1);
+//   for (let step = 0; step < steps; ++step) {
+//     let t = steps === 0 ? 0 : step / steps;
+//     const point = lerpPoint(p0, p1, t);
+//     line.push(game.level.getCell(Math.round(point.x), Math.round(point.y)));
+//   }
+//   return line;
+// };
 
 const OrderTypes = {
   FOLLOW: {
     replace: true
     , update: (game, unit, order) => {
-      if (!unit.path) {
-        const unitCell = game.level.findCell(unit.loc);
-        unit.path = [];
-        let cell = unitCell;
-        let prevCell = unitCell;
-        while (cell.exit) {
-          const LOS = getLOS(game, prevCell, cell.exit);
-          if (LOS.some(c => c.wall)) {
-            unit.path.push(cell);
-            prevCell = cell;
-          }
-          cell = cell.exit;
-        }
-        unit.path.push(cell);
-
-        unit.render(game);
-        console.log('unit path is', unit.path)
-      }
+      // if (!unit.path) {
+      //   const unitCell = game.level.findCell(unit.loc);
+      //   unit.path = [];
+      //   let cell = unitCell;
+      //   let prevCell = unitCell;
+      //   while (cell.exit) {
+      //     const LOS = getLOS(game, prevCell, cell.exit);
+      //     if (LOS.some(c => c.wall)) {
+      //       unit.path.push(cell);
+      //       prevCell = cell;
+      //     }
+      //     cell = cell.exit;
+      //   }
+      //   unit.path.push(cell);
+      //
+      //   unit.render(game);
+      //   console.log('unit path is', unit.path)
+      // }
       // const nextCell = unitCell.exit;
     }
   }

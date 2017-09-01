@@ -1,5 +1,4 @@
 import * as PIXI from 'pixi.js'
-import {CELL_SIZE} from '../Cell';
 
 class Tool {
   constructor(id, events) {
@@ -33,26 +32,11 @@ const SELECT = new Tool('SELECT', {
 });
 
 const PAINT = new Tool('PAINT', {
-  mousedown(e) {
-    this.game.cliffs.lineStyle(CELL_SIZE / 2, 0x0000FF);
-    this.prev = e.data.global.clone();
-    this.game.stage.on('mousemove', this.mousemove);
-  }
-  , mouseup(e) {
-    this.game.stage.off('mousemove', this.mousemove);
-    this.game.recalculatePathing();
-  }
-  , mouseout(e) {
-    this.game.stage.off('mousemove', this.mousemove);
-    this.game.recalculatePathing();
+  mouseup(e) {
+    // this.game.stage.off('mousemove', this.mousemove);
+    // this.game.recalculatePathing();
   }
 });
-
-PAINT.mousemove = (function (e) {
-  this.game.cliffs.moveTo(this.prev.x, this.prev.y);
-  this.game.cliffs.lineTo(e.data.global.x, e.data.global.y);
-  this.prev = e.data.global.clone();
-}).bind(PAINT);
 
 const SET_BASE = new Tool('SET_BASE', {
   click(e) {

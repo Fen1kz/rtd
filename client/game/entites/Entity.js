@@ -1,31 +1,18 @@
-import {Graphics} from 'pixi.js';
-import Point from '../geom/Point';
-import {CELL_SIZE} from '../Cell';
+import {Container, Graphics} from 'pixi.js';
 
-export default class Entity {
-  loc = new Point();
+export default class Entity extends Container {
   gfx = new Graphics();
 
-  constructor() {
-  }
-
-  setXY(x, y) {
-    this.loc.set(x, y);
-    this.gfx.x = x * CELL_SIZE;
-    this.gfx.y = y * CELL_SIZE;
-    return this;
-  }
-
-  setLoc(p) {
-    this.setXY(p.x, p.y);
-    return this;
+  constructor(x, y) {
+    super(x, y);
+    this.addChild(this.gfx);
+    this.gfx.cacheAsBitmap = true;
   }
 
   update() {
-
   }
 
   render() {
-
+    this.gfx.clear();
   }
 }
