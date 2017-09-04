@@ -4,7 +4,7 @@ import UIManager from "./managers/UIManager";
 import Level from './Level';
 
 const WIDTH = 800;
-const HEIGHT = 400;
+const HEIGHT = 600;
 
 export default class ClientGame {
   constructor() {
