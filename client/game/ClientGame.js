@@ -31,7 +31,7 @@ export default class ClientGame {
   start() {
     this.ui.start(this);
 
-    this.level = new Level(WIDTH, HEIGHT);
+    this.level = new Level(this, WIDTH, HEIGHT);
     this.stage.addChild(this.level.gfx);
     window.level = this.level;
 

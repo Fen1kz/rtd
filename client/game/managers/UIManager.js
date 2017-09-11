@@ -1,48 +1,34 @@
 import * as PIXI from 'pixi.js'
 
 class Tool {
-  constructor(id, events) {
+  constructor(id, eventNames) {
     this.id = id;
+    this.eventNames = eventNames;
     this.events = {};
-    Object.keys(events).map(eventName => {
-      this.events[eventName] = events[eventName].bind(this);
-    });
   }
 
-  on(game) {
-    this.game = game;
-    Object.keys(this.events).map(eventName => {
+  on(game, listenFn) {
+    this.events = {};
+    this.eventNames.forEach(eventName => {
+      this.events[eventName] = (e) => listenFn(e, this.id);
       game.stage.on(eventName, this.events[eventName]);
     });
   }
 
-  off() {
-    Object.keys(this.events).map(eventName => {
-      this.game.stage.off(eventName, this.events[eventName]);
+  off(game) {
+    this.eventNames.map(eventName => {
+      game.stage.off(eventName, this.events[eventName]);
     });
-    this.game = null;
+    this.events = null;
   }
 }
 
 
-const SELECT = new Tool('SELECT', {
-  click(e) {
-    console.log('SELECT', e, this, game)
-  }
-});
+const SELECT = new Tool('SELECT', ['click']);
 
-const PAINT = new Tool('PAINT', {
-  mouseup(e) {
-    // this.game.stage.off('mousemove', this.mousemove);
-    // this.game.recalculatePathing();
-  }
-});
+const PAINT = new Tool('PAINT', ['click']);
 
-const SET_BASE = new Tool('SET_BASE', {
-  click(e) {
-    this.game.setBase(e.data.global)
-  }
-});
+const SET_BASE = new Tool('SET_BASE', ['click']);
 
 export const TOOL = {
   SELECT
@@ -60,9 +46,14 @@ export default class UIManager extends PIXI.utils.EventEmitter {
   selectTool(tool) {
     if (this.tool) this.tool.off(this.game);
     this.tool = tool;
-    this.tool.on(this.game);
+    this.tool.on(this.game, this.listen);
     this.emit('change', {tool: this.tool.id})
   }
+
+  listen = (e, toolId) => {
+    this.emit(toolId + '.' + e.type, e, toolId);
+    // console.log(toolId + '.' + e.type)
+  };
 
   start() {
     this.game.stage.interactive = true;

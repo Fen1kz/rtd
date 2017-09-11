@@ -33,7 +33,7 @@ export default class ReactGame extends React.Component {
     return (<div>
       <div id="game" ref={this.gameMounted}/>
       <div>
-        <button onClick={() => this.game.spawn()}>spawn</button>
+        <button onClick={() => this.game.ui.emit('SPAWN')}>spawn</button>
         <span style={{background: this.state.tool === TOOL.SELECT.id ? 'red' : 'transparent'}}>S</span>
         <span style={{background: this.state.tool === TOOL.PAINT.id ? 'red' : 'transparent'}}>P</span>
         <span style={{background: this.state.tool === TOOL.SET_BASE.id ? 'red' : 'transparent'}}>B</span>
