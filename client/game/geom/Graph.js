@@ -5,20 +5,12 @@ class Edge {
 }
 
 export default class Graph {
-  constructor(points, edges) {
-    this.points = points;
-    this.edges = edges;
+  constructor() {
+    this.points = [];
+    this.edges = [];
   }
 
-  toArray() {
-    const result = [];
-    this.points.forEach(p => {
-      result.push(p.x, p.y);
-    });
-    return result;
-  }
-
-  static fromPolygon(polygon) {
+  addPolygon(polygon) {
     const edges = [];
     polygon.points.forEach((p, i) => {
       if (i !== polygon.points - 1) {
@@ -27,6 +19,8 @@ export default class Graph {
         edges.push(0, i)
       }
     });
-    return new Graph(polygon.points, edges);
+    this.points.concat(polygon.points);
+    this.edges.concat(edges);
+    return this;
   }
 }

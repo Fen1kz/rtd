@@ -20,6 +20,14 @@ export default class Polygon {
     return result;
   }
 
+  calcClockwise() {
+    return this.points.reduce((result, point, i) => {
+        const v1 = point;
+        const v2 = this.points[(i + 1) % this.points.length];
+        return result + (v2.x - v1.x) * (v2.y + v1.y);
+      }, 0) < 0;
+  }
+
   static fromArray(array) {
     const points = [];
     for (let i = 0; i < array.length; i += 2) {
@@ -31,36 +39,44 @@ export default class Polygon {
   extrude(size) {
     const newPoints = [];
     let prev, curr, next;
+    const clockwise = this.calcClockwise();
+    console.log('---', clockwise);
     for (let i = 0; i < this.points.length; ++i) {
       prev = this.points[(i - 1 + this.points.length) % this.points.length];
       curr = this.points[i];
       next = this.points[(i + 1 + this.points.length) % this.points.length];
 
-      const n = (a) => a < 0 ? a + PI2 : a;
+      const n = (a) => (a + PI2) % PI2;
+      const r2g = (a) => a * 180 / PI;
+      const g2r = (a) => a * PI / 180;
 
-      const dpcx = prev.x - curr.x;
-      const dpcy = prev.y - curr.y;
+      const v0 = prev.clone().sub(curr).norm();
+      const v1 = next.clone().sub(curr).norm();
 
-      const dncx = next.x - curr.x;
-      const dncy = next.y - curr.y;
+      let angle1 = Math.atan2(v0.y, v0.x);
+      let angle2 = Math.atan2(v1.y, v1.x);
 
-      let angle1 = n(Math.atan2(dpcy, dpcx));
-      if (angle1 === 0) angle1 += PI2;
-      const angle2 = n(Math.atan2(dncy, dncx));
+      let angleD;
       let angle;
-      if (angle1 > angle2) {
-        angle = (angle2 + (angle1 - angle2) / 2) + PI;
+      if (clockwise) {
+        angleD = n(angle2 - angle1);
+        angle = angle1 + angleD / 2;
       } else {
-        angle = (angle1 + (angle2 - angle1) / 2) + PI;
+        angleD = n(angle1 - angle2);
+        angle = angle2 + angleD / 2;
       }
 
-
-      console.log(prev, curr, next, dncx, dncy, dpcx, dpcy, dncy - dpcy, dncx - dpcx, angle1 * 180 / PI, angle2 * 180 / PI, angle * 180 / PI);
-      // console.log(prev, curr, next, angle1 * 180 / PI, angle2 * 180 / PI, angle * 180 / PI);
-      // console.log((angle1 - angle2) * 180 / PI);
-
-      // newPoints.push(curr.clone().polar(size, 45 / 180 * PI));
-      newPoints.push(curr.clone().polar(size, angle));
+      if (angleD <= 1.5 * PI) {
+        newPoints.push(curr.clone().polar(size, angle));
+      } else {
+        if (clockwise) {
+          newPoints.push(curr.clone().polar(size, angle - PI / 6));
+          newPoints.push(curr.clone().polar(size, angle + PI / 6));
+        } else {
+          newPoints.push(curr.clone().polar(size, angle + PI / 6));
+          newPoints.push(curr.clone().polar(size, angle - PI / 6));
+        }
+      }
     }
     return new Polygon(newPoints);
   }

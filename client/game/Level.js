@@ -6,6 +6,7 @@ import Creep from './entites/Creep';
 
 import Point from './geom/Point';
 import Polygon from './geom/Polygon';
+import Graph from './geom/Graph';
 
 export default class Level {
   gfx = new PIXI.Container();
@@ -24,11 +25,16 @@ export default class Level {
     this.base.position.set(600, 350);
     this.addEntity(this.base);
 
-    this.walls.push(Polygon.fromArray([100, 100, 200, 100, 200, 200, 100, 200]));
-    this.walls.push(Polygon.fromArray([100, 300, 100, 400, 200, 400, 200, 300]));
-    this.walls.push(Polygon.fromArray([250, 150, 400, 50, 350, 150, 500, 300, 300, 300]));
+    this.walls.push(Polygon.fromArray([100,100 ,200,100 ,200,200 ,100,200]));
+    this.walls.push(Polygon.fromArray([100,300 ,100,400 ,200,400 ,200,300]));
+    this.walls.push(Polygon.fromArray([250,150 ,450,100 ,350,200 ,450,300, 300,300]));
+
+    this.walls.push(Polygon.fromArray([400,400 ,400,500 ,500,500]));
+    this.walls.push(Polygon.fromArray([350,450 ,450,550 ,350,550]));
 
     this.extWalls = this.walls.map(p => p.extrude(10));
+
+    this.graphWalls = Graph.ConcatPolygons(this.extWalls);
 
     this.render();
   }
