@@ -27,7 +27,7 @@ import {Provider} from 'react-redux'
 // Store
 import createHistory from 'history/createBrowserHistory';
 // import createStore from './store/createStore';
-const history = createHistory();
+const history = createHistory({basename: GLOBAL_BASENAME});
 // const store = createStore(history);
 
 const render = () => {
@@ -35,7 +35,7 @@ const render = () => {
   ReactDOM.render(
     <AppContainer>
       {/*<Provider store={store}>*/}
-        <App history={history}/>
+      <App history={history}/>
       {/*</Provider>*/}
     </AppContainer>
     , document.getElementById('app')

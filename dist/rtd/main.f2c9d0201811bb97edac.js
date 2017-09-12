@@ -33703,7 +33703,7 @@ var _createBrowserHistory2 = _interopRequireDefault(_createBrowserHistory);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 // import createStore from './store/createStore';
-var history = (0, _createBrowserHistory2.default)();
+var history = (0, _createBrowserHistory2.default)({ basename: currentLanguage });
 // const store = createStore(history);
 
 // import { combineReducers } from 'redux-immutable';
@@ -75558,4 +75558,4 @@ module.exports = generateCWiseOp
 
 /***/ })
 /******/ ]);
-//# sourceMappingURL=main.9588f35befec43651844.js.map
+//# sourceMappingURL=main.f2c9d0201811bb97edac.js.map

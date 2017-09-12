@@ -10,6 +10,8 @@ import globals from './globals';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 
+console.log('NODE_ENV', process.env.NODE_ENV);
+
 module.exports = {
   devtool: isDevelopment ? 'eval' : 'source-map'
   , entry: isDevelopment
@@ -19,7 +21,7 @@ module.exports = {
     : './client/index.jsx'
   , output: { // Compile into js/build.js
     path: path.resolve(__dirname, 'dist/')
-    , publicPath: isDevelopment ? '' : ''
+    // , publicPath: isDevelopment ? '/' : ''
     , filename: isDevelopment ? '[name].js' : '[name].[chunkhash].js'
     , chunkFilename: isDevelopment ? '[name].js' : '[name].[chunkhash].js'
   }
@@ -33,7 +35,7 @@ module.exports = {
   , target: 'web' // Make web variables accessible to webpack, e.g. window
   , stats: false // Don't show stats in the console
   , plugins: [
-    // new webpack.DefinePlugin(Object.assign({}, globals, {GLOBAL_BROWSER: 'true'}))
+    new webpack.DefinePlugin(Object.assign({}, {GLOBAL_BASENAME: isDevelopment ? void 0 : JSON.stringify('/rtd')}))
     //, new webpack.optimize.CommonsChunkPlugin('common.js')
     // , isDevelopment ? null : new webpack.optimize.UglifyJsPlugin({sourceMap: true, compress: {warnings: false}})
     , isDevelopment ? new webpack.HotModuleReplacementPlugin({quiet: false}) : null
