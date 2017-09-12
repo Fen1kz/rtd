@@ -19,7 +19,7 @@ module.exports = {
     : './client/index.jsx'
   , output: { // Compile into js/build.js
     path: path.resolve(__dirname, 'dist/')
-    , publicPath: isDevelopment ? '/' : '/'
+    , publicPath: isDevelopment ? '' : ''
     , filename: isDevelopment ? '[name].js' : '[name].[chunkhash].js'
     , chunkFilename: isDevelopment ? '[name].js' : '[name].[chunkhash].js'
   }
