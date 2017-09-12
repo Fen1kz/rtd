@@ -27,6 +27,11 @@ export default class Level {
     this.gfx.addChild(this.wallsGfx);
 
     this.state = {};
+    this.game.ui.on('SELECT.click', (e) => {
+      const {x, y} = this.grid.getCellByPixels(e.data.global);
+      this.render();
+      this.grid.renderFF(this.gridGfx, this.grid.getFF(x, y));
+    });
     this.game.ui.on('PAINT.click', (e) => {
       const {x, y} = e.data.global;
       console.log(x, y, this.state.polygon)
@@ -42,6 +47,7 @@ export default class Level {
         this.state.polygon.push(x);
         this.state.polygon.push(y);
       }
+      this.recalculate();
       this.render();
     });
 
@@ -49,13 +55,8 @@ export default class Level {
   }
 
   start() {
-    this.base = new Base();
-    this.base.position.set(600, 350);
-    this.addEntity(this.base);
-
-    // this.spawns[0] = new Entity();
-    // this.spawns[0].position.set(0, 0);
-    // this.addEntity(this.spawns[0]);
+    this.base = this.addEntity(Base);
+    this.base.loc.set(600, 350);
 
     this.polywalls.push(new Polygon([100, 100, 200, 100, 200, 200, 100, 200]));
     this.polywalls.push(new Polygon([100, 300, 100, 400, 200, 400, 200, 300]));
@@ -64,6 +65,9 @@ export default class Level {
     this.pixiwalls = this.polywalls.map(p => p.toPIXI());
 
     this.grid = new Grid(this.width, this.height);
+    // this.grid = new Grid(800, 600);
+
+    Array(500).fill().forEach(u => this.spawn());
 
     this.recalculate();
     this.render();
@@ -73,17 +77,20 @@ export default class Level {
     this.grid.recalculate((x, y, v) => {
       for (let i = 0; i < this.pixiwalls.length; ++i) {
         if (this.pixiwalls[i].contains(x, y)) {
-          return 0;
+          return 1023;
         }
       }
       return 1;
     });
+    this.grid.clearFFCache();
   }
 
-  addEntity(entity) {
+  addEntity(entityClass) {
+    const entity = new (entityClass)(this.game);
     this.entites.push(entity);
-    this.gfx.addChild(entity);
-    return this;
+    this.gfx.addChild(entity.gfx);
+    entity.render();
+    return entity;
   }
 
   addWall(points) {
@@ -94,13 +101,13 @@ export default class Level {
   }
 
   spawn() {
-    const creep = new Creep(this.game);
-    creep.addOrder(Orders.FOLLOW(this.base));
-    this.addEntity(creep);
-    console.log(creep);
+    const creep = this.addEntity(Creep);
+    creep.loc.set(30, 30);
+    creep.addOrder(Orders.MOVE(this.base.loc));
   }
 
-  update(game) {
+  update() {
+    this.entites.forEach(e => e.update())
   }
 
   render() {

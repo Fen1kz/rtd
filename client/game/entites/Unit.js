@@ -1,28 +1,9 @@
 import Entity from './Entity';
-//
-// const lerp = (s, e, t) => s + t * (e - s);
-// const lerpPoint = (p0, p1, t) => new Point(lerp(p0.x, p1.x, t), lerp(p0.y, p1.y, t));
-// const diagonalDist = (p0, p1) => {
-//   let dx = p1.x - p0.x, dy = p1.y - p0.y;
-//   return Math.max(Math.abs(dx), Math.abs(dy));
-// };
-// const roundPoint = (p) => new Point(Math.round(p.x), Math.round(p.y));
-//
-// const getLOS = (game, p0, p1) => {
-//   const line = [];
-//   const steps = diagonalDist(p0, p1);
-//   for (let step = 0; step < steps; ++step) {
-//     let t = steps === 0 ? 0 : step / steps;
-//     const point = lerpPoint(p0, p1, t);
-//     line.push(game.level.getCell(Math.round(point.x), Math.round(point.y)));
-//   }
-//   return line;
-// };
+import Point from '../geom/Point';
 
 const OrderTypes = {
   FOLLOW: {
-    replace: true
-    , update: (game, unit, order) => {
+    update: (game, unit, order) => {
       // if (!unit.path) {
       //   const unitCell = game.level.findCell(unit.loc);
       //   unit.path = [];
@@ -44,24 +25,95 @@ const OrderTypes = {
       // const nextCell = unitCell.exit;
     }
   }
+  , MOVE: {
+    onStart: (game, unit, order) => {
+      const grid = game.level.grid;
+      const {x, y} = grid.getCellByPixels(order.point);
+      order.tcx = x; // target cell x
+      order.tcy = y;
+      order.tx = grid.getCCP(x);
+      order.ty = grid.getCCP(y);
+      grid.getFF(x, y);
+    }
+    , onUpdate: (game, unit, order) => {
+      const grid = game.level.grid;
+      const {tcx, tcy, tx, ty} = order;
+
+      const FF = grid.getFF(tcx, tcy);
+      const {x: ucx, y: ucy} = grid.getCellByPixels(unit.loc);
+      if (ucx === tcx && ucy === tcy) {
+        unit.radius = 0;
+        unit.orders = [];
+        game.level.entites.splice(game.level.entites.indexOf(unit), 1);
+      }
+
+      const unitOnWall = grid.getNDValue(grid.cells, ucx, ucy) > 255;
+      if (!unitOnWall) {
+        order.ucx = ucx;
+        order.ucy = ucy;
+      }
+
+      let FFvalue = FF.get(order.ucx, order.ucy);
+
+      if (FFvalue === void 0) {
+        FFvalue = [tcx, tcy];
+      }
+
+      const nx = grid.getCCP(FFvalue[0]);
+      const ny = grid.getCCP(FFvalue[1]);
+
+      const angle = Math.atan2(ny - unit.loc.y, nx - unit.loc.x);
+
+      const centerOfMass = unit.loc.clone();
+      centerOfMass.value = 0;
+      if (!unitOnWall) {
+        const entites = game.level.entites.filter(entity =>
+          entity.constructor.name === 'Creep'
+          && entity !== unit
+          && unit.loc.dist2(entity.loc) < (unit.radius + entity.radius) * (unit.radius + entity.radius)
+        );
+        entites.forEach((entity) => {
+          centerOfMass.set((centerOfMass.x + entity.loc.x) / 2, (centerOfMass.y + entity.loc.y) / 2);
+          centerOfMass.value += .5;
+        });
+        if (centerOfMass.value > 1) centerOfMass.value = 1;
+      }
+
+      const comAngle = centerOfMass.angleTo(unit.loc) + Math.random();
+      const forceTarget = new Point().polar(unit.speed * (1 - centerOfMass.value), angle);
+      const forceCOM = new Point().polar(unit.speed * (centerOfMass.value), comAngle);
+      const force = new Point(
+        forceTarget.x + forceCOM.x
+        , forceTarget.y + forceCOM.y
+      );
+
+      unit.loc.set(
+        unit.loc.x + force.x
+        , unit.loc.y + force.y
+      );
+    }
+  }
 };
 
 export const Orders = {
   FOLLOW: (entity) => ({type: 'FOLLOW', entity})
+  , MOVE: (point) => ({type: 'MOVE', point})
 };
 
 export default class Unit extends Entity {
-  speed = 10;
+  speed = 1;
   orders = [];
 
   addOrder(order) {
+    const orderData = OrderTypes[order.type];
+    if (orderData.onStart) orderData.onStart(this.game, this, order);
     this.orders.push(order);
   }
 
-  update(game) {
+  update() {
     this.orders.forEach(order => {
       const orderData = OrderTypes[order.type];
-      orderData.update(game, this, order);
+      orderData.onUpdate(this.game, this, order);
     });
     // if (this.orderLoc) {
     //   if (!this.currentCell) {
@@ -87,37 +139,14 @@ export default class Unit extends Entity {
     // }
   }
 
-  render(game) {
+  render() {
     this.gfx.clear();
+    this.gfx.lineStyle(1);
     this.gfx.beginFill(0xFF0000);
-    this.gfx.drawCircle(0, 0, 8);
+    this.gfx.drawCircle(0, 0, this.radius);
     this.gfx.endFill();
 
     this.gfx.lineStyle(1, 0x0000FF);
-    if (this.path) {
-      this.gfx.moveTo(0, 0);
-      this.path.forEach(c => {
-        const x = c.gfx.x;
-        const y = c.gfx.y;
-        this.gfx.lineTo(x, y);
-      });
-      this.gfx.beginFill(0x0000FF);
-      this.path.forEach(c => {
-        const x = c.gfx.x;
-        const y = c.gfx.y;
-        this.gfx.drawCircle(x, y, 4);
-      });
-
-      this.gfx.beginFill(0xFF00FF);
-      for (let i = -1; 1 + i < this.path.length; ++i) {
-        const c0 = (i === -1) ? game.level.findCell(this.loc) : this.path[i];
-        const c1 = this.path[i + 1];
-        const line = getLOS(game, c0, c1);
-        line.forEach(c => {
-          this.gfx.drawCircle(c.gfx.x, c.gfx.y, 2);
-        })
-      }
-    }
   }
 }
 
