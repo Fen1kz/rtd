@@ -28,69 +28,105 @@ const OrderTypes = {
   , MOVE: {
     onStart: (game, unit, order) => {
       const grid = game.level.grid;
-      const {x, y} = grid.getCellByPixels(order.point);
-      order.tcx = x; // target cell x
-      order.tcy = y;
-      order.tx = grid.getCCP(x);
-      order.ty = grid.getCCP(y);
-      grid.getFF(x, y);
+      const [x, y] = grid.getCellByPixels(order.point);
+      order.FFKey = grid.makeFFKey(x, y);
+      order.targetPoint = new Point(grid.getCCP(x), grid.getCCP(y));
     }
     , onUpdate: (game, unit, order) => {
+      const debug = (p, color, r = 5) => {
+        const debugp = new Point(p).mul(unit.radius);
+        unit.gfx.beginFill(color);
+        unit.gfx.drawCircle(debugp.x, debugp.y, r);
+      };
+      const level = game.level;
       const grid = game.level.grid;
-      const {tcx, tcy, tx, ty} = order;
 
-      const FF = grid.getFF(tcx, tcy);
-      const {x: ucx, y: ucy} = grid.getCellByPixels(unit.loc);
-      if (ucx === tcx && ucy === tcy) {
-        unit.radius = 0;
-        unit.orders = [];
-        game.level.entites.splice(game.level.entites.indexOf(unit), 1);
-      }
-
-      const unitOnWall = grid.getNDValue(grid.cells, ucx, ucy) > 255;
+      const unitOnWall = grid.getPointPathing(unit.loc) > 255;
       if (!unitOnWall) {
-        order.ucx = ucx;
-        order.ucy = ucy;
+        order.unitLoc = new Point(unit.loc);
       }
 
-      let FFvalue = FF.get(order.ucx, order.ucy);
+      let FFPoint = grid.getFFNextPoint(order.FFKey, order.unitLoc);
 
-      if (FFvalue === void 0) {
-        FFvalue = [tcx, tcy];
+      if (FFPoint === void 0) {
+        FFPoint = order.targetPoint;
       }
 
-      const nx = grid.getCCP(FFvalue[0]);
-      const ny = grid.getCCP(FFvalue[1]);
+      const desiredVel = new Point(FFPoint).sub(unit.loc).norm();
+      debug(desiredVel, 0xFFFF001);
 
-      const angle = Math.atan2(ny - unit.loc.y, nx - unit.loc.x);
+      // Arrival
+      const arrivalDist = unit.loc.dist2(order.targetPoint);
+      const arrivalRadius = Math.pow(unit.radius, 2);
+      if (arrivalDist < arrivalRadius) {
+        desiredVel.mul(arrivalDist / arrivalRadius);
+        if (desiredVel.len2() < 1) {
+          desiredVel.set(0, 0);
+        }
+      }
 
-      const centerOfMass = unit.loc.clone();
-      centerOfMass.value = 0;
-      if (!unitOnWall) {
-        const entites = game.level.entites.filter(entity =>
-          entity.constructor.name === 'Creep'
-          && entity !== unit
-          && unit.loc.dist2(entity.loc) < (unit.radius + entity.radius) * (unit.radius + entity.radius)
-        );
-        entites.forEach((entity) => {
-          centerOfMass.set((centerOfMass.x + entity.loc.x) / 2, (centerOfMass.y + entity.loc.y) / 2);
-          centerOfMass.value += .5;
+      const seekForce = new Point(desiredVel).sub(unit.vel);
+
+      const steering = new Point();
+      steering.add(seekForce);
+      steering.trunc(unit.accel);
+
+      unit.vel.add(steering).trunc(1);
+
+      // Collision
+      const aheadV = new Point(unit.vel).mul(unit.speed);
+      debug(aheadV, 0x0000FF);
+      debug(new Point(aheadV).rotate(1), 0x0000FF);
+      debug(new Point(aheadV).rotate(-1), 0x0000FF);
+
+
+      // Wall
+      // const collisionWall = new Point();
+      // if (grid.getPointPathing(ahead) > 255) {
+      //
+      // }
+
+      // Unit
+      const aheadC = new Point(aheadV).add(unit.loc);
+      const aheadR = new Point(aheadV).rotate(1).add(unit.loc);
+      const aheadL = new Point(aheadV).rotate(-1).add(unit.loc);
+
+      const unitsC = level.getEntitiesNear(aheadC, unit.radius, e => e !== unit);
+      const unitsR = level.getEntitiesNear(aheadR, unit.radius, e => e !== unit);
+      const unitsL = level.getEntitiesNear(aheadL, unit.radius, e => e !== unit);
+
+      if (unitsC.length === 0) {
+      // } else if (unitsR.length === 0) {
+      //   console.log('unitsR');
+      //   unit.vel.rotate(1);
+      // } else if (unitsL.length === 0) {
+      //   console.log('unitsL');
+      //   unit.vel.rotate(-1);
+      } else {
+        const com = new Point();
+        unitsC.forEach((u, i) => {
+          com.add(u.loc).mul(i === 0 ? 1 : .5)
         });
-        if (centerOfMass.value > 1) centerOfMass.value = 1;
+        // const dv = com.sub(unit.loc).norm()
+        // unit.vel.copy(com.sub(unit.loc).norm().mul(-1));
+        // unit.vel.mul(-1);
       }
 
-      const comAngle = centerOfMass.angleTo(unit.loc) + Math.random();
-      const forceTarget = new Point().polar(unit.speed * (1 - centerOfMass.value), angle);
-      const forceCOM = new Point().polar(unit.speed * (centerOfMass.value), comAngle);
-      const force = new Point(
-        forceTarget.x + forceCOM.x
-        , forceTarget.y + forceCOM.y
-      );
 
-      unit.loc.set(
-        unit.loc.x + force.x
-        , unit.loc.y + force.y
-      );
+      // level.getEntitiesNear(ahead, unit.radius, e => e !== unit)
+      // const avoidanceForce = new Point();
+      // if (grid.getPointPathing(ahead) > 255) {
+      //   // // const obstacleCenter = grid.getCellCenterByPixels(ahead);
+      //   // let obstacleCenter = grid.getFFNextPoint(order.FFKey, ahead);
+      //   // if (!obstacleCenter) {
+      //   //   obstacleCenter = grid.getFFNextPoint(order.FFKey, unit.loc);
+      //   // }
+      //   // if (obstacleCenter) {
+      //   //   const diff = ahead.sub(obstacleCenter).norm();
+      //   //   avoidanceForce.copy(diff);//.mul(diff.len());
+      //   // }
+      //   // console.log(avoidanceForce)
+      // }
     }
   }
 };
@@ -101,7 +137,9 @@ export const Orders = {
 };
 
 export default class Unit extends Entity {
-  speed = 1;
+  accel = .05;
+  speed = 2;
+  vel = new Point();
   orders = [];
 
   addOrder(order) {
@@ -111,10 +149,20 @@ export default class Unit extends Entity {
   }
 
   update() {
+    this.render();
     this.orders.forEach(order => {
       const orderData = OrderTypes[order.type];
       orderData.onUpdate(this.game, this, order);
     });
+    // const nextLoc = this.vel.clone().mul(this.speed).add(this.loc);
+    // const units = this.game.level.getUnitsNear(nextLoc, this.radius);
+    // if ()
+    if (this.vel.x !== 0 || this.vel.y !== 0) {
+      this.loc.set(
+        this.loc.x + this.speed * this.vel.x
+        , this.loc.y + this.speed * this.vel.y
+      );
+    }
     // if (this.orderLoc) {
     //   if (!this.currentCell) {
     //     this.currentCell = game.level.findCell(this.loc);
@@ -145,6 +193,12 @@ export default class Unit extends Entity {
     this.gfx.beginFill(0xFF0000);
     this.gfx.drawCircle(0, 0, this.radius);
     this.gfx.endFill();
+
+    // const unit = this;
+    // const ahead = new Point(unit.vel).mul(unit.speed + unit.radius);
+    // const aheadl = new Point(ahead).rotate(1);
+    // this.gfx.drawCircle(ahead.x, ahead.y, 2);
+    // this.gfx.drawCircle(aheadl.x, aheadl.y, 2);
 
     this.gfx.lineStyle(1, 0x0000FF);
   }

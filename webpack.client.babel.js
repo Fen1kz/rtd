@@ -35,7 +35,7 @@ module.exports = {
   , target: 'web' // Make web variables accessible to webpack, e.g. window
   , stats: false // Don't show stats in the console
   , plugins: [
-    new webpack.DefinePlugin(Object.assign({}, {GLOBAL_BASENAME: isDevelopment ? void 0 : JSON.stringify('/rtd')}))
+    new webpack.DefinePlugin(Object.assign({}, {GLOBAL_BASENAME: JSON.stringify(isDevelopment ? '/' : '/rtd')}))
     //, new webpack.optimize.CommonsChunkPlugin('common.js')
     // , isDevelopment ? null : new webpack.optimize.UglifyJsPlugin({sourceMap: true, compress: {warnings: false}})
     , isDevelopment ? new webpack.HotModuleReplacementPlugin({quiet: false}) : null

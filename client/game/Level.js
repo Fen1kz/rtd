@@ -28,9 +28,9 @@ export default class Level {
 
     this.state = {};
     this.game.ui.on('SELECT.click', (e) => {
-      const {x, y} = this.grid.getCellByPixels(e.data.global);
+      const [x, y] = this.grid.getCellByPixels(e.data.global);
       this.render();
-      this.grid.renderFF(this.gridGfx, this.grid.getFF(x, y));
+      this.grid.renderFF(this.gridGfx, this.grid.getFF(x + ':' + y));
     });
     this.game.ui.on('PAINT.click', (e) => {
       const {x, y} = e.data.global;
@@ -67,7 +67,7 @@ export default class Level {
     this.grid = new Grid(this.width, this.height);
     // this.grid = new Grid(800, 600);
 
-    Array(500).fill().forEach(u => this.spawn());
+    Array(5).fill().forEach((u, i) => this.spawn(i));
 
     this.recalculate();
     this.render();
@@ -100,22 +100,28 @@ export default class Level {
     this.render();
   }
 
-  spawn() {
+  spawn(i) {
     const creep = this.addEntity(Creep);
+    creep.id = i;
     creep.loc.set(30, 30);
     creep.addOrder(Orders.MOVE(this.base.loc));
   }
 
   update() {
-    this.entites.forEach(e => e.update())
+    this.entites.forEach(e => e.update());
+  }
+
+  getEntitiesNear(point, radius, filter = () => 1) {
+    return this.entites.filter(e => filter(e) && point.dist2(e.loc) < Math.pow(radius * e.radius, 2));
   }
 
   render() {
     this.wallsGfx.clear();
-    this.wallsGfx.lineStyle(1);
+    this.wallsGfx.lineStyle(1, 0x0, 0.1);
     this.pixiwalls.forEach(wall => {
       this.wallsGfx.drawPolygon(wall);
     });
+    this.wallsGfx.lineStyle(1);
     if (this.state.polygon) {
       const polygon = new Polygon(this.state.polygon);
       this.wallsGfx.drawPolygon(polygon.toPIXI());

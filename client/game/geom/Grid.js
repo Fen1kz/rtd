@@ -1,7 +1,9 @@
 import ndarray from 'ndarray';
 import ndforEach from 'ndarray-foreach';
 
-export const CELL_SIZE = 15;
+import Point from './Point';
+
+export const CELL_SIZE = 50;
 
 const getCCP = (xy) => xy * CELL_SIZE + CELL_SIZE / 2; // getCellCenterPixel
 
@@ -32,15 +34,38 @@ export default class Grid {
   }
 
   getCellByPixels(point) {
-    return {x: Math.floor(point.x / CELL_SIZE), y: Math.floor(point.y / CELL_SIZE)};
+    return [Math.floor(point.x / CELL_SIZE), Math.floor(point.y / CELL_SIZE)];
+  }
+
+  getCellCenterByPixels(point) {
+    return new Point(
+      getCCP(Math.floor(point.x / CELL_SIZE))
+      , getCCP(Math.floor(point.y / CELL_SIZE))
+    );
+  }
+
+  getPointPathing(point) {
+    return this.getNDValue(this.cells, Math.floor(point.x / CELL_SIZE), Math.floor(point.y / CELL_SIZE));
+  }
+
+  getFFNextPoint(FFKey, currentPoint) {
+    const FF = this.getFF(FFKey);
+    const [cx, cy] = this.getCellByPixels(currentPoint);
+    const value = this.getNDValue(FF, cx, cy);
+    if (value) {
+      return new Point(getCCP(value[0]), getCCP(value[1]));
+    }
   }
 
   makeFFKey = (x, y) => x + ':' + y;
 
-  getFF(x, y) {
-    const FFKey = this.makeFFKey(x, y);
-    if (this.FFCache[FFKey]) return this.FFCache[FFKey];
-    else return this.createFF(x, y);
+  getFF(FFKey) {
+    if (this.FFCache[FFKey]) {
+      return this.FFCache[FFKey];
+    } else {
+      const [x, y] = FFKey.split(':');
+      return this.createFF(+x, +y);
+    }
   }
 
   createFF(tx, ty) {
@@ -77,23 +102,31 @@ export default class Grid {
       let minX = null;
       let minY = null;
       let minDist = 0;
+
+      // north
+      const freeN = this.getNDValue(this.cells, x + 0, y - 1) < 255;
+      const freeE = this.getNDValue(this.cells, x + 1, y + 0) < 255;
+      const freeS = this.getNDValue(this.cells, x + 0, y + 1) < 255;
+      const freeW = this.getNDValue(this.cells, x - 1, y + 0) < 255;
+
       [
-        [x + 1, y + 0]
-        , [x + 1, y + 1]
+        [x + 0, y - 1]
+        , [x + 1, y + 0]
         , [x + 0, y + 1]
-        , [x - 1, y + 1]
         , [x - 1, y + 0]
-        , [x - 1, y - 1]
-        , [x + 0, y - 1]
-        , [x + 1, y - 1]
-      ].forEach(([nx, ny]) => {
-        const distOfNear = this.getNDValue(dkstra, nx, ny);
-        if ((distOfNear - dist) < minDist) {
-          minX = nx;
-          minY = ny;
-          minDist = (distOfNear - dist);
-        }
-      });
+        , (freeN && freeE) && [x + 1, y - 1] // NE
+        , (freeS && freeE) && [x + 1, y + 1] // SE
+        , (freeS && freeW) && [x - 1, y + 1] // SW
+        , (freeN && freeW) && [x - 1, y - 1] // NW
+      ].filter(c => !!c)
+        .forEach(([nx, ny]) => {
+          const distOfNear = this.getNDValue(dkstra, nx, ny);
+          if ((distOfNear - dist) < minDist) {
+            minX = nx;
+            minY = ny;
+            minDist = (distOfNear - dist);
+          }
+        });
       // console.log(`${x}:${y} =${minDist}> ${minX}:${minY}`)
       if (minX !== null) {
         FF.set(x, y, [minX, minY]);
@@ -108,9 +141,9 @@ export default class Grid {
   clearFFCache = () => this.FFCache = {};
 
   render(gfx) {
-    gfx.lineStyle(1);
+    // gfx.lineStyle(1);
     ndforEach(this.cells, ([x, y], v) => {
-      gfx.beginFill(0xFFFFFF * (v));
+      gfx.beginFill(v < 255 ? 0xFFFFFF : 0x0);
       gfx.drawRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
     });
   }
