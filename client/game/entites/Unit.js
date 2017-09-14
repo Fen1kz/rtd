@@ -33,9 +33,9 @@ const OrderTypes = {
       order.targetPoint = new Point(grid.getCCP(x), grid.getCCP(y));
     }
     , onUpdate: (game, unit, order) => {
-      const debug = (p, color, r = 5) => {
+      const debugCircle = (p, color, r = 5, opacity = 1) => {
         const debugp = new Point(p).mul(unit.radius);
-        unit.gfx.beginFill(color);
+        unit.gfx.beginFill(color, opacity);
         unit.gfx.drawCircle(debugp.x, debugp.y, r);
       };
       const level = game.level;
@@ -53,7 +53,7 @@ const OrderTypes = {
       }
 
       const desiredVel = new Point(FFPoint).sub(unit.loc).norm();
-      debug(desiredVel, 0xFFFF001);
+      debugCircle(desiredVel, 0xFFFF001);
 
       // Arrival
       const arrivalDist = unit.loc.dist2(order.targetPoint);
@@ -75,9 +75,12 @@ const OrderTypes = {
 
       // Collision
       const aheadV = new Point(unit.vel).mul(unit.speed);
-      debug(aheadV, 0x0000FF);
-      debug(new Point(aheadV).rotate(1), 0x0000FF);
-      debug(new Point(aheadV).rotate(-1), 0x0000FF);
+      debugCircle(aheadV, 0x0000FF);
+      debugCircle(aheadV, 0x0000FF, unit.radius, 0.1);
+      debugCircle(new Point(aheadV).rotate(1), 0x0000FF);
+      debugCircle(new Point(aheadV).rotate(1), 0x0000FF, unit.radius, 0.1);
+      debugCircle(new Point(aheadV).rotate(-1), 0x0000FF);
+      debugCircle(new Point(aheadV).rotate(-1), 0x0000FF, unit.radius, 0.1);
 
 
       // Wall

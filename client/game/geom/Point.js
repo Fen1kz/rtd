@@ -78,7 +78,7 @@ export default class Point {
   }
 
   rotate(a) {
-    return this.set(this.x * Math.cos(a) - this.y * Math.sin(a), this.x * Math.cos(a) + this.y * Math.sin(a));
+    return this.set(this.x * Math.cos(a) - this.y * Math.sin(a), this.y * Math.cos(a) + this.x * Math.sin(a));
   }
 
   // // Chainable

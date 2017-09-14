@@ -64,7 +64,7 @@ export default class Level {
 
     this.pixiwalls = this.polywalls.map(p => p.toPIXI());
 
-    this.grid = new Grid(this.width, this.height);
+    this.grid = new Grid(this.width, this.height, 50);
     // this.grid = new Grid(800, 600);
 
     Array(5).fill().forEach((u, i) => this.spawn(i));

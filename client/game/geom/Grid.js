@@ -3,26 +3,22 @@ import ndforEach from 'ndarray-foreach';
 
 import Point from './Point';
 
-export const CELL_SIZE = 50;
-
-const getCCP = (xy) => xy * CELL_SIZE + CELL_SIZE / 2; // getCellCenterPixel
-
 export default class Grid {
-  getCCP = getCCP;
-
-  constructor(widht, height) {
-    this.width = Math.floor(widht / CELL_SIZE);
-    this.height = Math.floor(height / CELL_SIZE);
+  constructor(widht, height, CELL_SIZE) {
+    this.CELL_SIZE = CELL_SIZE;
+    this.width = Math.floor(widht / this.CELL_SIZE);
+    this.height = Math.floor(height / this.CELL_SIZE);
     this.cells = ndarray([], [this.width, this.height]);
     this.FFCache = {};
-    window.pts = this.cells;
-    window.ndarray = ndarray;
-    window.ndforEach = ndforEach;
+  }
+
+  getCCP(xy) {
+    return xy * this.CELL_SIZE + this.CELL_SIZE / 2
   }
 
   recalculate(cb) {
     ndforEach(this.cells, ([x, y], v) => {
-      const nv = cb(getCCP(x), getCCP(y), v);
+      const nv = cb(this.getCCP(x), this.getCCP(y), v);
       if (nv != v) {
         this.cells.set(x, y, nv);
       }
@@ -34,18 +30,18 @@ export default class Grid {
   }
 
   getCellByPixels(point) {
-    return [Math.floor(point.x / CELL_SIZE), Math.floor(point.y / CELL_SIZE)];
+    return [Math.floor(point.x / this.CELL_SIZE), Math.floor(point.y / this.CELL_SIZE)];
   }
 
   getCellCenterByPixels(point) {
     return new Point(
-      getCCP(Math.floor(point.x / CELL_SIZE))
-      , getCCP(Math.floor(point.y / CELL_SIZE))
+      this.getCCP(Math.floor(point.x / this.CELL_SIZE))
+      , this.getCCP(Math.floor(point.y / this.CELL_SIZE))
     );
   }
 
   getPointPathing(point) {
-    return this.getNDValue(this.cells, Math.floor(point.x / CELL_SIZE), Math.floor(point.y / CELL_SIZE));
+    return this.getNDValue(this.cells, Math.floor(point.x / this.CELL_SIZE), Math.floor(point.y / this.CELL_SIZE));
   }
 
   getFFNextPoint(FFKey, currentPoint) {
@@ -53,7 +49,7 @@ export default class Grid {
     const [cx, cy] = this.getCellByPixels(currentPoint);
     const value = this.getNDValue(FF, cx, cy);
     if (value) {
-      return new Point(getCCP(value[0]), getCCP(value[1]));
+      return new Point(this.getCCP(value[0]), this.getCCP(value[1]));
     }
   }
 
@@ -73,8 +69,6 @@ export default class Grid {
 
     const dkstra = ndarray([], [this.width, this.height]);
     const FF = ndarray([], [this.width, this.height]);
-    window.dkstra = dkstra;
-    window.FF = FF;
 
     const frontier = [[tx, ty]];
     dkstra.set(tx, ty, 0);
@@ -144,20 +138,20 @@ export default class Grid {
     // gfx.lineStyle(1);
     ndforEach(this.cells, ([x, y], v) => {
       gfx.beginFill(v < 255 ? 0xFFFFFF : 0x0);
-      gfx.drawRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+      gfx.drawRect(x * this.CELL_SIZE, y * this.CELL_SIZE, this.CELL_SIZE, this.CELL_SIZE);
     });
   }
 
   renderFF(gfx, FF) {
     // ndforEach(dkstra, ([x, y], v) => {
-    //   const txt = new PIXI.Text(v, {fontSize: CELL_SIZE / 4});
-    //   txt.position.set(x * CELL_SIZE, y * CELL_SIZE);
+    //   const txt = new PIXI.Text(v, {fontSize: this.CELL_SIZE / 4});
+    //   txt.position.set(x * this.CELL_SIZE, y * this.CELL_SIZE);
     //   gfx.addChild(txt)
     //
     //   // const FFv = FF.get(x, y);
     //   // if (FFv) {
-    //   //   const txt = new PIXI.Text(`${x}:${y}\n(${v})\n[${FFv}]`, {fontSize: CELL_SIZE / 4});
-    //   //   txt.position.set(x * CELL_SIZE, y * CELL_SIZE);
+    //   //   const txt = new PIXI.Text(`${x}:${y}\n(${v})\n[${FFv}]`, {fontSize: this.CELL_SIZE / 4});
+    //   //   txt.position.set(x * this.CELL_SIZE, y * this.CELL_SIZE);
     //   //   gfx.addChild(txt)
     //   // }
     // });
@@ -167,8 +161,8 @@ export default class Grid {
         const [nx, ny] = v;
         const a = Math.atan2(ny - y, nx - x);
         // console.log(`${x}:${y} => ${nx}:${ny} (${a * 180 / Math.PI})`)
-        gfx.moveTo(getCCP(x), getCCP(y));
-        gfx.lineTo(getCCP(x) + CELL_SIZE * .5 * Math.cos(a), getCCP(y) + CELL_SIZE * .5 * Math.sin(a));
+        gfx.moveTo(this.getCCP(x), this.getCCP(y));
+        gfx.lineTo(this.getCCP(x) + this.CELL_SIZE * .5 * Math.cos(a), this.getCCP(y) + this.CELL_SIZE * .5 * Math.sin(a));
       }
     });
   }
