@@ -7,6 +7,7 @@ import Creep from './entites/Creep';
 
 import Polygon from './geom/Polygon';
 import Grid from './geom/Grid';
+import GridManager from './managers/GridManager';
 
 const DRAW_POLYGON_CIRCLE = 5;
 
@@ -27,11 +28,11 @@ export default class Level {
     this.gfx.addChild(this.wallsGfx);
 
     this.state = {};
-    this.game.ui.on('SELECT.click', (e) => {
-      const [x, y] = this.grid.getCellByPixels(e.data.global);
-      this.render();
-      this.grid.renderFF(this.gridGfx, this.grid.getFF(x + ':' + y));
-    });
+    // this.game.ui.on('SELECT.click', (e) => {
+    //   const [x, y] = this.grid.getCellByPoint(e.data.global);
+    //   this.render();
+    //   this.grid.renderFF(this.gridGfx, this.grid.getFF(x + ':' + y));
+    // });
     this.game.ui.on('PAINT.click', (e) => {
       const {x, y} = e.data.global;
       console.log(x, y, this.state.polygon)
@@ -51,7 +52,22 @@ export default class Level {
       this.render();
     });
 
-    this.game.ui.on('SPAWN', () => this.spawn());
+    this.game.ui.on('SET_BASE.click', (e) => {
+      this.base.loc.copy(e.data.global)
+      this.recalculate();
+      this.render();
+    });
+
+    this.game.ui.on('UNIT.click', (e) => {
+      const creep = this.addEntity(Creep);
+      creep.loc.copy(e.data.global);
+    });
+
+    this.game.ui.on('SPAWN', (i) => Array(i).fill().forEach(() => this.spawn()));
+
+    this.game.ui.on('DEBUG', () => {
+      this.render();
+    });
   }
 
   start() {
@@ -64,17 +80,18 @@ export default class Level {
 
     this.pixiwalls = this.polywalls.map(p => p.toPIXI());
 
-    this.grid = new Grid(this.width, this.height, 50);
+    this.gridManager = new GridManager(this.width, this.height);
+    this.recalculate();
     // this.grid = new Grid(800, 600);
 
-    Array(5).fill().forEach((u, i) => this.spawn(i));
+    Array(1).fill().forEach((u, i) => this.spawn(i));
 
-    this.recalculate();
+    // this.recalculate();
     this.render();
   }
 
   recalculate() {
-    this.grid.recalculate((x, y, v) => {
+    this.gridManager.recalculate((x, y, v) => {
       for (let i = 0; i < this.pixiwalls.length; ++i) {
         if (this.pixiwalls[i].contains(x, y)) {
           return 1023;
@@ -82,7 +99,6 @@ export default class Level {
       }
       return 1;
     });
-    this.grid.clearFFCache();
   }
 
   addEntity(entityClass) {
@@ -103,8 +119,8 @@ export default class Level {
   spawn(i) {
     const creep = this.addEntity(Creep);
     creep.id = i;
-    creep.loc.set(30, 30);
-    creep.addOrder(Orders.MOVE(this.base.loc));
+    creep.loc.set(40, 40);
+    creep.addOrder(Orders.FOLLOW(this.base));
   }
 
   update() {
@@ -112,7 +128,7 @@ export default class Level {
   }
 
   getEntitiesNear(point, radius, filter = () => 1) {
-    return this.entites.filter(e => filter(e) && point.dist2(e.loc) < Math.pow(radius * e.radius, 2));
+    return this.entites.filter(e => filter(e) && point.dist2(e.loc) < Math.pow(radius + e.radius, 2));
   }
 
   render() {
@@ -134,7 +150,7 @@ export default class Level {
       this.wallsGfx.endFill();
     }
 
-    this.grid.render(this.gridGfx);
+    this.gridManager.render(this.gridGfx);
     this.entites.forEach(e => e.render());
   }
 }

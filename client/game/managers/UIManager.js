@@ -30,10 +30,13 @@ const PAINT = new Tool('PAINT', ['click']);
 
 const SET_BASE = new Tool('SET_BASE', ['click']);
 
+const UNIT = new Tool('UNIT', ['click']);
+
 export const TOOL = {
   SELECT
   , PAINT
   , SET_BASE
+  , UNIT
 };
 
 export default class UIManager extends PIXI.utils.EventEmitter {
@@ -68,6 +71,9 @@ export default class UIManager extends PIXI.utils.EventEmitter {
           break;
         case 51:
           this.selectTool(TOOL.SET_BASE);
+          break;
+        case 52:
+          this.selectTool(TOOL.UNIT);
           break;
         default:
           console.log(e.keyCode);

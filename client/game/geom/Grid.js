@@ -4,104 +4,86 @@ import ndforEach from 'ndarray-foreach';
 import Point from './Point';
 
 export default class Grid {
-  constructor(widht, height, CELL_SIZE) {
-    this.CELL_SIZE = CELL_SIZE;
-    this.width = Math.floor(widht / this.CELL_SIZE);
-    this.height = Math.floor(height / this.CELL_SIZE);
+  constructor(key, type, width, height, cellSize) {
+    this.key = key;
+    this.type = type;
+    this.cellSize = cellSize;
+    this.width = Math.floor(width / this.cellSize);
+    this.height = Math.floor(height / this.cellSize);
     this.cells = ndarray([], [this.width, this.height]);
-    this.FFCache = {};
   }
 
-  getCCP(xy) {
-    return xy * this.CELL_SIZE + this.CELL_SIZE / 2
+  getCellValueXY(x, y) {
+    return x >= 0 && x < this.width && y >= 0 && y < this.height ? this.cells.get(x, y) : void 0;
   }
 
-  recalculate(cb) {
-    ndforEach(this.cells, ([x, y], v) => {
-      const nv = cb(this.getCCP(x), this.getCCP(y), v);
+  getCellValue(cell) {
+    return this.getCellValueXY(cell[0], cell[1]);
+  }
+
+  getCellValueByPoint(point) {
+    return this.getCellValueXY(Math.floor(point.x / this.cellSize), Math.floor(point.y / this.cellSize));
+  }
+
+  setCellValue(cell, value) {
+    return this.cells.set(cell[0], cell[1], value);
+  }
+
+  getCellByPoint(point) {
+    return [Math.floor(point.x / this.cellSize), Math.floor(point.y / this.cellSize)];
+  }
+
+  getPointByCell(cell) {
+    return new Point(
+      cell[0] * this.cellSize + this.cellSize / 2
+      , cell[1] * this.cellSize + this.cellSize / 2
+    );
+  }
+
+  fillByCallback(cb) {
+    ndforEach(this.cells, (cell, v) => {
+      const nv = cb(cell[0] * this.cellSize + this.cellSize / 2, cell[1] * this.cellSize + this.cellSize / 2, v);
       if (nv != v) {
-        this.cells.set(x, y, nv);
+        this.setCellValue(cell, nv);
       }
     });
   }
 
-  getNDValue(ndarray, x, y) {
-    return x >= 0 && x < this.width && y >= 0 && y < this.height ? ndarray.get(x, y) : void 0;
-  }
-
-  getCellByPixels(point) {
-    return [Math.floor(point.x / this.CELL_SIZE), Math.floor(point.y / this.CELL_SIZE)];
-  }
-
-  getCellCenterByPixels(point) {
-    return new Point(
-      this.getCCP(Math.floor(point.x / this.CELL_SIZE))
-      , this.getCCP(Math.floor(point.y / this.CELL_SIZE))
-    );
-  }
-
-  getPointPathing(point) {
-    return this.getNDValue(this.cells, Math.floor(point.x / this.CELL_SIZE), Math.floor(point.y / this.CELL_SIZE));
-  }
-
-  getFFNextPoint(FFKey, currentPoint) {
-    const FF = this.getFF(FFKey);
-    const [cx, cy] = this.getCellByPixels(currentPoint);
-    const value = this.getNDValue(FF, cx, cy);
-    if (value) {
-      return new Point(this.getCCP(value[0]), this.getCCP(value[1]));
-    }
-  }
-
-  makeFFKey = (x, y) => x + ':' + y;
-
-  getFF(FFKey) {
-    if (this.FFCache[FFKey]) {
-      return this.FFCache[FFKey];
-    } else {
-      const [x, y] = FFKey.split(':');
-      return this.createFF(+x, +y);
-    }
-  }
-
-  createFF(tx, ty) {
-    const FFKey = this.makeFFKey(tx, ty);
-
-    const dkstra = ndarray([], [this.width, this.height]);
-    const FF = ndarray([], [this.width, this.height]);
-
-    const frontier = [[tx, ty]];
-    dkstra.set(tx, ty, 0);
+  fillDkstra(gridWall, tx, ty) {
+    const exitCell = [tx, ty];
+    const frontier = [exitCell];
+    this.setCellValue(exitCell, 0);
     for (let i = 0; i < frontier.length; ++i) {
-      const [x, y] = frontier[i];
-      const distOfFront = this.getNDValue(dkstra, x, y);
+      const cellFront = frontier[i];
+      const [x, y] = cellFront;
+      const distFront = this.getCellValue(cellFront);
       [
         [x + 1, y + 0]
         , [x + 0, y + 1]
         , [x - 1, y + 0]
         , [x + 0, y - 1]
-      ].forEach(([nx, ny]) => {
-        const costOfNear = this.getNDValue(this.cells, nx, ny);
-        const distOfNear = this.getNDValue(dkstra, nx, ny);
+      ].forEach((cellNearFront) => {
+        const costOfNear = gridWall.getCellValue(cellNearFront);
+        const distOfNear = this.getCellValue(cellNearFront);
         if (distOfNear === void 0 && costOfNear !== void 0) {
-          dkstra.set(nx, ny, distOfFront + costOfNear);
+          this.setCellValue(cellNearFront, distFront + costOfNear);
           if (costOfNear <= 255) {
-            frontier.push([nx, ny]);
+            frontier.push(cellNearFront);
           }
         }
       });
     }
+  }
 
-    ndforEach(dkstra, ([x, y], dist) => {
-      let minX = null;
-      let minY = null;
+  fillFlowField(gridWall, gridDkstra) {
+    ndforEach(gridDkstra.cells, ([x, y], dist) => {
+      let bestCell = null;
       let minDist = 0;
 
-      // north
-      const freeN = this.getNDValue(this.cells, x + 0, y - 1) < 255;
-      const freeE = this.getNDValue(this.cells, x + 1, y + 0) < 255;
-      const freeS = this.getNDValue(this.cells, x + 0, y + 1) < 255;
-      const freeW = this.getNDValue(this.cells, x - 1, y + 0) < 255;
+      const freeN = gridWall.getCellValueXY(x + 0, y - 1) < 255;
+      const freeE = gridWall.getCellValueXY(x + 1, y + 0) < 255;
+      const freeS = gridWall.getCellValueXY(x + 0, y + 1) < 255;
+      const freeW = gridWall.getCellValueXY(x - 1, y + 0) < 255;
 
       [
         [x + 0, y - 1]
@@ -113,56 +95,51 @@ export default class Grid {
         , (freeS && freeW) && [x - 1, y + 1] // SW
         , (freeN && freeW) && [x - 1, y - 1] // NW
       ].filter(c => !!c)
-        .forEach(([nx, ny]) => {
-          const distOfNear = this.getNDValue(dkstra, nx, ny);
+        .forEach((cellNear) => {
+          const distOfNear = gridDkstra.getCellValue(cellNear);
           if ((distOfNear - dist) < minDist) {
-            minX = nx;
-            minY = ny;
+            bestCell = cellNear;
             minDist = (distOfNear - dist);
           }
         });
-      // console.log(`${x}:${y} =${minDist}> ${minX}:${minY}`)
-      if (minX !== null) {
-        FF.set(x, y, [minX, minY]);
+      if (bestCell !== null) {
+        this.setCellValue([x, y], bestCell);
       }
     });
-
-    this.FFCache[FFKey] = FF;
-
-    return FF;
   }
 
-  clearFFCache = () => this.FFCache = {};
-
-  render(gfx) {
-    // gfx.lineStyle(1);
+  renderWall(gfx) {
+    gfx.lineStyle(1, 0x0, 0.1)
     ndforEach(this.cells, ([x, y], v) => {
       gfx.beginFill(v < 255 ? 0xFFFFFF : 0x0);
-      gfx.drawRect(x * this.CELL_SIZE, y * this.CELL_SIZE, this.CELL_SIZE, this.CELL_SIZE);
+      gfx.drawRect(x * this.cellSize, y * this.cellSize, this.cellSize, this.cellSize);
     });
   }
 
-  renderFF(gfx, FF) {
+  renderFlowField(gfx) {
     // ndforEach(dkstra, ([x, y], v) => {
-    //   const txt = new PIXI.Text(v, {fontSize: this.CELL_SIZE / 4});
-    //   txt.position.set(x * this.CELL_SIZE, y * this.CELL_SIZE);
+    //   const txt = new PIXI.Text(v, {fontSize: this.cellSize / 4});
+    //   txt.position.set(x * this.cellSize, y * this.cellSize);
     //   gfx.addChild(txt)
     //
     //   // const FFv = FF.get(x, y);
     //   // if (FFv) {
-    //   //   const txt = new PIXI.Text(`${x}:${y}\n(${v})\n[${FFv}]`, {fontSize: this.CELL_SIZE / 4});
-    //   //   txt.position.set(x * this.CELL_SIZE, y * this.CELL_SIZE);
+    //   //   const txt = new PIXI.Text(`${x}:${y}\n(${v})\n[${FFv}]`, {fontSize: this.cellSize / 4});
+    //   //   txt.position.set(x * this.cellSize, y * this.cellSize);
     //   //   gfx.addChild(txt)
     //   // }
     // });
     gfx.lineStyle(1, 0x0000FF);
-    ndforEach(FF, ([x, y], v) => {
+    console.log(this.cells)
+    ndforEach(this.cells, (cell, v) => {
       if (v) {
         const [nx, ny] = v;
-        const a = Math.atan2(ny - y, nx - x);
+        const a = Math.atan2(ny - cell[1], nx - cell[0]);
         // console.log(`${x}:${y} => ${nx}:${ny} (${a * 180 / Math.PI})`)
-        gfx.moveTo(this.getCCP(x), this.getCCP(y));
-        gfx.lineTo(this.getCCP(x) + this.CELL_SIZE * .5 * Math.cos(a), this.getCCP(y) + this.CELL_SIZE * .5 * Math.sin(a));
+        const point = this.getPointByCell(cell);
+        gfx.moveTo(point.x, point.y);
+        point.polar(this.cellSize * .5, a);
+        gfx.lineTo(point.x, point.y);
       }
     });
   }

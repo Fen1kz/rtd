@@ -41,7 +41,8 @@ export default class Point {
   }
 
   norm() {
-    return this.mul(1 / this.len());
+    const len = this.len();
+    return len > 0 ? this.mul(1 / len) : this;
   }
 
   trunc(c) {
@@ -110,6 +111,7 @@ export default class Point {
   //
   // angleTo = (p) => Math.atan2(p.y - this.y, p.x - this.x);
 }
+window.Point = Point;
 
 class ObservablePoint extends Point {
   constructor(cb) {

@@ -1,121 +1,138 @@
 import Entity from './Entity';
 import Point from '../geom/Point';
+import {GRID_TYPE} from '../managers/GridManager';
 
 const OrderTypes = {
   FOLLOW: {
-    update: (game, unit, order) => {
-      // if (!unit.path) {
-      //   const unitCell = game.level.findCell(unit.loc);
-      //   unit.path = [];
-      //   let cell = unitCell;
-      //   let prevCell = unitCell;
-      //   while (cell.exit) {
-      //     const LOS = getLOS(game, prevCell, cell.exit);
-      //     if (LOS.some(c => c.wall)) {
-      //       unit.path.push(cell);
-      //       prevCell = cell;
-      //     }
-      //     cell = cell.exit;
-      //   }
-      //   unit.path.push(cell);
-      //
-      //   unit.render(game);
-      //   console.log('unit path is', unit.path)
-      // }
-      // const nextCell = unitCell.exit;
+    onUpdate: (game, unit, order) => {
+      order.point = order.entity.loc;
+      OrderTypes.MOVE.onStart(game, unit, order);
+      OrderTypes.MOVE.onUpdate(game, unit, order);
     }
   }
   , MOVE: {
     onStart: (game, unit, order) => {
-      const grid = game.level.grid;
-      const [x, y] = grid.getCellByPixels(order.point);
-      order.FFKey = grid.makeFFKey(x, y);
-      order.targetPoint = new Point(grid.getCCP(x), grid.getCCP(y));
+      const gridManager = game.level.gridManager;
+      order.targetCell = gridManager.getWalls().getCellByPoint(order.point);
+      order.gridKey = gridManager.makeGridKey(GRID_TYPE.FLOWFIELD, order.targetCell[0], order.targetCell[1]);
+
+      const grid = gridManager.getGrid(order.gridKey);
+      order.targetPoint = grid.getPointByCell(order.targetCell);
     }
     , onUpdate: (game, unit, order) => {
-      const debugCircle = (p, color, r = 5, opacity = 1) => {
-        const debugp = new Point(p).mul(unit.radius);
-        unit.gfx.beginFill(color, opacity);
-        unit.gfx.drawCircle(debugp.x, debugp.y, r);
+      const debugCircle = (p, color, r = 2, opacity = 1) => {
+        // const debugp = new Point(p);//.mul(unit.radius);
+        // unit.gfx.beginFill(color, opacity);
+        // unit.gfx.drawCircle(debugp.x, debugp.y, r);
       };
       const level = game.level;
-      const grid = game.level.grid;
+      const gridManager = game.level.gridManager;
+      const gridWalls = gridManager.getWalls();
+      const gridFF = gridManager.getGrid(order.gridKey);
 
-      const unitOnWall = grid.getPointPathing(unit.loc) > 255;
-      if (!unitOnWall) {
-        order.unitLoc = new Point(unit.loc);
+      // let localTargetCell;
+      // let localTargetPoint;
+      // const unitOnWall = gridWalls.getCellValueByPoint(unit.loc) > 255;
+      // if (unitOnWall) {
+      //   localTargetPoint = order.unitLoc;
+      //   debugCircle(new Point(), 0xFF00FF, 15);
+      // } else {
+      //   order.unitLoc = new Point(unit.loc);
+      //   localTargetCell = gridFF.getCellValueByPoint(order.unitLoc);
+      // }
+      let localTargetPoint;
+      const localTargetCell = gridFF.getCellValueByPoint(unit.loc);
+
+
+      if (localTargetPoint === void 0 && localTargetCell !== void 0) {
+        localTargetPoint = gridFF.getPointByCell(localTargetCell);
+      } else {
+        localTargetPoint = order.targetPoint;
       }
+      const desiredVel = new Point(localTargetPoint).sub(unit.loc).norm();
+      // debugCircle(new Point(localTargetPoint).sub(unit.loc), 0x00FF00);
 
-      let FFPoint = grid.getFFNextPoint(order.FFKey, order.unitLoc);
-
-      if (FFPoint === void 0) {
-        FFPoint = order.targetPoint;
-      }
-
-      const desiredVel = new Point(FFPoint).sub(unit.loc).norm();
-      debugCircle(desiredVel, 0xFFFF001);
-
-      // Arrival
+      // // Arrival
       const arrivalDist = unit.loc.dist2(order.targetPoint);
       const arrivalRadius = Math.pow(unit.radius, 2);
       if (arrivalDist < arrivalRadius) {
         desiredVel.mul(arrivalDist / arrivalRadius);
         if (desiredVel.len2() < 1) {
-          desiredVel.set(0, 0);
+          unit.vel.set(0, 0);
+          return;
         }
       }
 
       const seekForce = new Point(desiredVel).sub(unit.vel);
 
-      const steering = new Point();
-      steering.add(seekForce);
-      steering.trunc(unit.accel);
-
-      unit.vel.add(steering).trunc(1);
-
       // Collision
-      const aheadV = new Point(unit.vel).mul(unit.speed);
-      debugCircle(aheadV, 0x0000FF);
-      debugCircle(aheadV, 0x0000FF, unit.radius, 0.1);
-      debugCircle(new Point(aheadV).rotate(1), 0x0000FF);
-      debugCircle(new Point(aheadV).rotate(1), 0x0000FF, unit.radius, 0.1);
-      debugCircle(new Point(aheadV).rotate(-1), 0x0000FF);
-      debugCircle(new Point(aheadV).rotate(-1), 0x0000FF, unit.radius, 0.1);
-
-
-      // Wall
-      // const collisionWall = new Point();
-      // if (grid.getPointPathing(ahead) > 255) {
-      //
-      // }
+      // debugCircle(new Point(aheadU).rotate(1), 0x0000FF);
+      // debugCircle(new Point(aheadU).rotate(1), 0x0000FF, unit.radius, 0.1);
+      // debugCircle(new Point(aheadU).rotate(-1), 0x0000FF);
+      // debugCircle(new Point(aheadU).rotate(-1), 0x0000FF, unit.radius, 0.1);
 
       // Unit
-      const aheadC = new Point(aheadV).add(unit.loc);
-      const aheadR = new Point(aheadV).rotate(1).add(unit.loc);
-      const aheadL = new Point(aheadV).rotate(-1).add(unit.loc);
+      const aheadU = new Point(unit.vel).mul(unit.speed);
+      const aheadC = new Point(aheadU).add(unit.loc);
+      // const aheadR = new Point(aheadU).rotate(1).add(unit.loc);
+      // const aheadL = new Point(aheadU).rotate(-1).add(unit.loc);
 
-      const unitsC = level.getEntitiesNear(aheadC, unit.radius, e => e !== unit);
-      const unitsR = level.getEntitiesNear(aheadR, unit.radius, e => e !== unit);
-      const unitsL = level.getEntitiesNear(aheadL, unit.radius, e => e !== unit);
+      const unitsC = level.getEntitiesNear(unit.loc, unit.radius, e => e !== unit);
+      // const unitsR = level.getEntitiesNear(aheadR, unit.radius, e => e !== unit);
+      // const unitsL = level.getEntitiesNear(aheadL, unit.radius, e => e !== unit);
 
-      if (unitsC.length === 0) {
-      // } else if (unitsR.length === 0) {
-      //   console.log('unitsR');
-      //   unit.vel.rotate(1);
-      // } else if (unitsL.length === 0) {
-      //   console.log('unitsL');
-      //   unit.vel.rotate(-1);
-      } else {
+      // console.log(unitsC.length, level.getEntitiesNear(aheadC, unit.radius, e => e !== unit), level.getEntitiesNear(aheadC, unit.radius))
+      const collUnitsForce = new Point();
+      if (unitsC.length > 0) {
         const com = new Point();
         unitsC.forEach((u, i) => {
           com.add(u.loc).mul(i === 0 ? 1 : .5)
         });
-        // const dv = com.sub(unit.loc).norm()
-        // unit.vel.copy(com.sub(unit.loc).norm().mul(-1));
-        // unit.vel.mul(-1);
+        collUnitsForce.copy(new Point(unit.loc).sub(com));
+      }
+
+      // Wall
+      const unitOnWall = gridWalls.getCellValueByPoint(new Point(unit.loc).polar(unit.radius, Math.PI * 0.0)) > 255;
+      const unitOnWall2 = gridWalls.getCellValueByPoint(new Point(unit.loc).polar(unit.radius, Math.PI * 0.5)) > 255;
+      const unitOnWall3 = gridWalls.getCellValueByPoint(new Point(unit.loc).polar(unit.radius, Math.PI * 1.0)) > 255;
+      const unitOnWall4 = gridWalls.getCellValueByPoint(new Point(unit.loc).polar(unit.radius, Math.PI * 1.5)) > 255;
+      const unitOnWall5 = gridWalls.getCellValueByPoint(new Point(unit.loc).polar(unit.radius, Math.PI * 2.0)) > 255;
+
+      const collWallsForce = new Point();
+      const wallCheckPoints = Array(8).fill().map((u, i) => new Point()
+        .polar(unit.radius, Math.PI * i * .25)
+        .add(unit.loc))
+        .filter(p => gridWalls.getCellValueByPoint(p) > 255);
+      if (wallCheckPoints.length > 0) {
+        const comW = new Point();
+        wallCheckPoints
+          .forEach((p, i) => {
+            debugCircle(new Point(p).sub(unit.loc), 0xFFFF00, 10);
+            comW.add(p).mul(i === 0 ? 1 : .5)
+          });
+        collWallsForce.copy(new Point(unit.loc).sub(comW));
       }
 
 
+      // const aheadWall = new Point(collUnitsForce).polar(unit.radius, aheadU.angle());
+      // const aheadWallPoint = new Point(aheadWall).add(unit.loc);
+
+      // gridWalls.getNear8(gridWalls.getCellValueByPoint(unit.loc))
+      // if (gridWalls.getCellValueByPoint(aheadWallPoint) > 255) {
+      // const collWallsForce = new Point();
+      // if (unitOnWall) {
+      //   collWallsForce.add(new Point(unit.loc).sub(gridWalls.getPointByCell(gridWalls.getCellByPoint(unit.loc))));
+      // }
+      debugCircle(collWallsForce, 0xFF00FF, 5);
+
+      const steering = new Point();
+      steering.add(seekForce);
+      steering.add(collUnitsForce.norm());
+      steering.add(collWallsForce.norm());
+
+      unit.vel.add(steering).trunc(1);
+
+      if (isNaN(unit.vel.x)) debugger
       // level.getEntitiesNear(ahead, unit.radius, e => e !== unit)
       // const avoidanceForce = new Point();
       // if (grid.getPointPathing(ahead) > 255) {
@@ -140,8 +157,8 @@ export const Orders = {
 };
 
 export default class Unit extends Entity {
-  accel = .05;
-  speed = 2;
+  accel = .5;
+  speed = 1.5;
   vel = new Point();
   orders = [];
 
@@ -152,7 +169,6 @@ export default class Unit extends Entity {
   }
 
   update() {
-    this.render();
     this.orders.forEach(order => {
       const orderData = OrderTypes[order.type];
       orderData.onUpdate(this.game, this, order);
