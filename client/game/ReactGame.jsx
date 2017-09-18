@@ -30,6 +30,12 @@ export default class ReactGame extends React.Component {
   }
 
   render() {
+    const Tool = ({tool}) => (
+      <button
+        onClick={() => this.game.ui.selectTool(tool.id)}
+        style={{background: this.state.tool === tool.id ? 'red' : 'transparent'}}
+      >{tool.id}</button>
+    );
     return (<div>
       <div id="game" ref={this.gameMounted}/>
       <div>
@@ -37,10 +43,11 @@ export default class ReactGame extends React.Component {
         <button onClick={() => this.game.ui.emit('SPAWN', 5)}>S5</button>
         <button onClick={() => this.game.ui.emit('SPAWN', 50)}>S50</button>
         <button onClick={() => this.game.ui.emit('DEBUG', 50)}>DBG</button>
-        <span style={{background: this.state.tool === TOOL.SELECT.id ? 'red' : 'transparent'}}>S</span>
-        <span style={{background: this.state.tool === TOOL.PAINT.id ? 'red' : 'transparent'}}>P</span>
-        <span style={{background: this.state.tool === TOOL.SET_BASE.id ? 'red' : 'transparent'}}>B</span>
-        <span style={{background: this.state.tool === TOOL.UNIT.id ? 'red' : 'transparent'}}>U</span>
+        <Tool tool={TOOL.SELECT}>P</Tool>
+        <Tool tool={TOOL.PAINT}>P</Tool>
+        <Tool tool={TOOL.SET_BASE}>B</Tool>
+        <Tool tool={TOOL.UNIT}>U</Tool>
+        <Tool tool={TOOL.Tower}>T</Tool>
       </div>
     </div>);
   }

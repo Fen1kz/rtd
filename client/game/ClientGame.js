@@ -2,6 +2,7 @@ import * as PIXI from 'pixi.js';
 
 import UIManager from "./managers/UIManager";
 import Level from './Level';
+import commands from './commands';
 
 const WIDTH = 800;
 const HEIGHT = 600;
@@ -37,6 +38,8 @@ export default class ClientGame {
     window.level = this.level;
 
     this.level.start();
+
+    commands(this);
 
     this.tick();
   }

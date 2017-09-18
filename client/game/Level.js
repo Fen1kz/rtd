@@ -19,6 +19,7 @@ export default class Level {
   polywalls = [];
   wallsGfx = new PIXI.Graphics();
   gridGfx = new PIXI.Graphics();
+  stateGfx = new PIXI.Graphics();
 
   constructor(game, width, height) {
     this.game = game;
@@ -26,48 +27,12 @@ export default class Level {
     this.height = height;
     this.gfx.addChild(this.gridGfx);
     this.gfx.addChild(this.wallsGfx);
+    this.gfx.addChild(this.stateGfx);
+
+    this.stateGfx.beginFill(0);
+    this.stateGfx.drawCircle(0, 0, 20);
 
     this.state = {};
-    // this.game.ui.on('SELECT.click', (e) => {
-    //   const [x, y] = this.grid.getCellByPoint(e.data.global);
-    //   this.render();
-    //   this.grid.renderFF(this.gridGfx, this.grid.getFF(x + ':' + y));
-    // });
-    this.game.ui.on('PAINT.click', (e) => {
-      const {x, y} = e.data.global;
-      console.log(x, y, this.state.polygon)
-      if (!this.state.polygon) {
-        this.state.polygon = [];
-      }
-      if (Math.abs(this.state.polygon[0] - x) < DRAW_POLYGON_CIRCLE && Math.abs(this.state.polygon[1] - y) < DRAW_POLYGON_CIRCLE) {
-        if (this.state.polygon.length > 2) {
-          this.addWall(this.state.polygon);
-        }
-        this.state.polygon = null;
-      } else {
-        this.state.polygon.push(x);
-        this.state.polygon.push(y);
-      }
-      this.recalculate();
-      this.render();
-    });
-
-    this.game.ui.on('SET_BASE.click', (e) => {
-      this.base.loc.copy(e.data.global)
-      this.recalculate();
-      this.render();
-    });
-
-    this.game.ui.on('UNIT.click', (e) => {
-      const creep = this.addEntity(Creep);
-      creep.loc.copy(e.data.global);
-    });
-
-    this.game.ui.on('SPAWN', (i) => Array(i).fill().forEach(() => this.spawn()));
-
-    this.game.ui.on('DEBUG', () => {
-      this.render();
-    });
   }
 
   start() {

@@ -1,9 +1,10 @@
 import * as PIXI from 'pixi.js'
 
 class Tool {
-  constructor(id, eventNames) {
+  constructor(id, options = {}) {
     this.id = id;
-    this.eventNames = eventNames;
+    this.eventNames = options.events || ['click'];
+    this.hotkey = options.hotkey;
     this.events = {};
   }
 
@@ -24,33 +25,43 @@ class Tool {
 }
 
 
-const SELECT = new Tool('SELECT', ['click']);
+const SELECT = new Tool('SELECT', {hotkey: 49});
 
-const PAINT = new Tool('PAINT', ['click']);
+const PAINT = new Tool('PAINT', {hotkey: 50});
 
-const SET_BASE = new Tool('SET_BASE', ['click']);
+const SET_BASE = new Tool('SET_BASE', {hotkey: 51});
 
-const UNIT = new Tool('UNIT', ['click']);
+const UNIT = new Tool('UNIT', {hotkey: 52});
+
+const Tower = new Tool('Tower', {
+  hotkey: 53,
+  events: ['click', 'mousemove']
+});
 
 export const TOOL = {
   SELECT
   , PAINT
   , SET_BASE
   , UNIT
+  , Tower
 };
 
 export default class UIManager extends PIXI.utils.EventEmitter {
   constructor(game) {
     super();
     this.game = game;
-    this.selectTool(TOOL.SELECT);
+    this.selectTool(TOOL.SELECT.id);
   }
 
-  selectTool(tool) {
-    if (this.tool) this.tool.off(this.game);
-    this.tool = tool;
+  selectTool(toolId) {
+    if (this.tool) {
+      this.emit(this.tool.id + '.stop', null, toolId);
+      this.tool.off(this.game);
+    }
+    this.tool = TOOL[toolId];
     this.tool.on(this.game, this.listen);
-    this.emit('change', {tool: this.tool.id})
+    this.emit('change', {tool: this.tool.id});
+    this.emit(toolId + '.start', null, toolId);
   }
 
   listen = (e, toolId) => {
@@ -62,22 +73,12 @@ export default class UIManager extends PIXI.utils.EventEmitter {
     this.game.stage.interactive = true;
 
     window.document.addEventListener('keyup', (e) => {
-      switch (e.keyCode) {
-        case 49:
-          this.selectTool(TOOL.SELECT);
-          break;
-        case 50:
-          this.selectTool(TOOL.PAINT);
-          break;
-        case 51:
-          this.selectTool(TOOL.SET_BASE);
-          break;
-        case 52:
-          this.selectTool(TOOL.UNIT);
-          break;
-        default:
-          console.log(e.keyCode);
-      }
+      Object.values(TOOL).some((tool) => {
+        if (tool.hotkey === e.keyCode) {
+          this.selectTool(tool.id);
+          return true;
+        }
+      });
     });
   }
 
