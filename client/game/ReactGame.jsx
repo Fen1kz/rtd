@@ -42,7 +42,7 @@ export default class ReactGame extends React.Component {
         <button onClick={() => this.game.ui.emit('SPAWN', 1)}>S1</button>
         <button onClick={() => this.game.ui.emit('SPAWN', 5)}>S5</button>
         <button onClick={() => this.game.ui.emit('SPAWN', 50)}>S50</button>
-        <button onClick={() => this.game.ui.emit('DEBUG', 50)}>DBG</button>
+        <button onClick={() => this.game.ui.emit('DEBUG')}>DBG</button>
         <Tool tool={TOOL.SELECT}>P</Tool>
         <Tool tool={TOOL.PAINT}>P</Tool>
         <Tool tool={TOOL.SET_BASE}>B</Tool>

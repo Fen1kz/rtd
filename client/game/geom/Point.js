@@ -8,7 +8,7 @@ export default class Point {
     }
   }
 
-  set(x, y) {
+  set (x, y) {
     this.x = x;
     this.y = y;
     return this;
@@ -45,6 +45,12 @@ export default class Point {
     return len > 0 ? this.mul(1 / len) : this;
   }
 
+  norm2(z = 1) {
+    const len = this.len();
+    return len > z ? this.mul(z / len)
+      : this;
+  }
+
   trunc(c) {
     return this.set(
       this.x > 0 ? Math.min(this.x, c) : Math.max(this.x, -c)
@@ -60,6 +66,10 @@ export default class Point {
 
   len2() {
     return this.x * this.x + this.y * this.y;
+  }
+
+  not0() {
+    return this.x !== 0 || this.y !== 0;
   }
 
   dist(p) {
@@ -110,6 +120,10 @@ export default class Point {
   // dist2 = (p) => (this.x - p.x) * (this.x - p.x) + (this.y - p.y) * (this.y - p.y);
   //
   // angleTo = (p) => Math.atan2(p.y - this.y, p.x - this.x);
+
+  toPolarString() {
+    return `(${this.len().toFixed(2)} ${(this.angle() * 180 / Math.PI).toFixed(0)})`
+  }
 }
 window.Point = Point;
 
@@ -119,7 +133,7 @@ class ObservablePoint extends Point {
     this.cb = cb;
   }
 
-  set(x, y) {
+  set (x, y) {
     super.set(x, y);
     this.cb(this);
     return this;

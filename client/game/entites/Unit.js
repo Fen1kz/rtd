@@ -24,64 +24,157 @@ const OrderTypes = {
       const gridManager = game.level.gridManager;
       const gridWalls = gridManager.getWalls();
       const gridFF = gridManager.getGrid(order.gridKey);
+      const forceUnits = new Point(0, 0);
+      const unitVel = new Point(0, 0);
+
+      if (unit.collided) {
+        unit.vel.set(0, 0);
+        unit.collided = false;
+      }
+
+      function predictUnitLoc(vel) {
+        return new Point(vel).mul(unit.speed).add(unit.loc);
+      }
+
+      const unitLocPredicted = predictUnitLoc(unit.vel);
+
+      {
+        const unitsC = level.getEntitiesNear(unitLocPredicted, unit.radius * 2, e => e !== unit);
+        if (unitsC.length > 0) {
+          const com = new Point();
+          unitsC.forEach((u, i) => {
+            com.add(u.loc).mul(i === 0 ? 1 : .5)
+          });
+          let dist = new Point(unit.loc).sub(com).norm();
+          if (dist.len2() === 0) {
+            dist = new Point(1 - Math.random() * 2, 1 - Math.random() * 2)
+          }
+          forceUnits.add(dist);
+        }
+
+        const forceWalls = new Point();
+        const localWallCell = gridWalls.getCellByPoint(unitLocPredicted);
+        const wallcheck = [
+          [localWallCell[0] + 0, localWallCell[1] + 0]
+          , [localWallCell[0] + 1, localWallCell[1] + 0]
+          , [localWallCell[0] + 0, localWallCell[1] + 1]
+          , [localWallCell[0] - 1, localWallCell[1] + 0]
+          , [localWallCell[0] + 0, localWallCell[1] - 1]
+          , [localWallCell[0] + 1, localWallCell[1] - 1]
+          , [localWallCell[0] + 1, localWallCell[1] + 1]
+          , [localWallCell[0] - 1, localWallCell[1] + 1]
+          , [localWallCell[0] - 1, localWallCell[1] - 1]
+        ]
+          .filter((cell) => gridWalls.getCellValue(cell) > 255)
+          .forEach((cell) => {
+            const cellPoint = gridWalls.getPointByCell(cell);
+            if (intersects(cellPoint, unit)) {
+              const dist = new Point(unit.loc).sub(cellPoint).norm();
+              // forceWalls.set(1 - dist.x, 1 - dist.y).mul(-1);
+              forceWalls.copy(dist);
+            }
+          });
+
+        // unit.vel.norm();
+
+        // console.log(unit.id, forceUnits.toPolarString(), forceWalls.toPolarString());
+        if (forceWalls.not0()) {
+          unitVel.add(forceWalls);
+        } else {
+          unitVel.add(forceUnits);
+        }
+        if (unitVel.not0()) {
+          unit.collided = true;
+          unit.vel.copy(unitVel);
+          return;
+        }
+      }
 
       const localTargetCell = gridFF.getCellValueByPoint(unit.loc);
-
-
-      let localTargetPoint = localTargetCell !== void 0
+      let targetCellPoint = localTargetCell !== void 0
         ? gridFF.getPointByCell(localTargetCell)
         : order.targetPoint;
-      const desiredVel = new Point(localTargetPoint).sub(unit.loc).norm();
+      const unitCellPoint = gridFF.getPointByCell(gridFF.getCellByPoint(unit.loc));
+      const vecUC2Unit = new Point(unit.loc).sub(unitCellPoint);
+      const vecUC2TC = new Point(targetCellPoint).add(vecUC2Unit).sub(unit.loc);
+      const desiredVel = new Point(vecUC2TC).norm();
 
-      // // Arrival
-      // const arrivalDist = unit.loc.dist2(order.targetPoint);
-      // const arrivalRadius = Math.pow(unit.radius, 2);
-      // if (arrivalDist < arrivalRadius) {
-      //   desiredVel.mul(arrivalDist / arrivalRadius);
-      //   if (desiredVel.len2() < 1) {
-      //     unit.vel.set(0, 0);
-      //     return;
-      //   }
+      console.log(gridFF.getCellByPoint(unit.loc), localTargetCell);
+      console.log('unit', new Point(unit.loc));
+      console.log('unitCellPoint', unitCellPoint);
+      console.log('targetCellPoint', targetCellPoint);
+      console.log(vecUC2Unit, vecUC2TC, desiredVel.toPolarString());
+
+      // let aheadC = predictUnitLoc(new Point(unit.vel).mul(4));
+      // const unitsC = level.getEntitiesNear(aheadC, unit.radius * 2.2, e => e !== unit);
+      // if (unitsC.length > 0) {
+      //   let minUnit = unitsC[0], minDist = unit.radius * 2;
+      //   unitsC.forEach((u, i) => {
+      //     let dist = unit.loc.dist2(u.loc);
+      //     if (dist < minDist) {
+      //       minDist = dist;
+      //       minUnit = u;
+      //     }
+      //   });
+      //   const dist = aheadC.sub(minUnit.loc).norm();
+      //   desiredVel.add(dist);
       // }
+      // aheadC = predictUnitLoc(new Point(unit.vel.add(desiredVel).norm()).mul(2));
+      // const forceWalls = new Point();
+      // const localWallCell = gridWalls.getCellByPoint(aheadC);
+      // const wallcheck = [
+      //   [localWallCell[0] + 0, localWallCell[1] + 0]
+      //   , [localWallCell[0] + 1, localWallCell[1] + 0]
+      //   , [localWallCell[0] + 0, localWallCell[1] + 1]
+      //   , [localWallCell[0] - 1, localWallCell[1] + 0]
+      //   , [localWallCell[0] + 0, localWallCell[1] - 1]
+      //   , [localWallCell[0] + 1, localWallCell[1] - 1]
+      //   , [localWallCell[0] + 1, localWallCell[1] + 1]
+      //   , [localWallCell[0] - 1, localWallCell[1] + 1]
+      //   , [localWallCell[0] - 1, localWallCell[1] - 1]
+      // ]
+      //   .filter((cell) => gridWalls.getCellValue(cell) > 255)
+      //   .forEach((cell) => {
+      //     const cellPoint = gridWalls.getPointByCell(cell);
+      //     if (intersects(cellPoint, unit)) {
+      //       const dist = new Point(aheadC).sub(cellPoint);
+      //       // forceWalls.set(1 - dist.x, 1 - dist.y).mul(-1);
+      //       desiredVel.add(dist.norm());
+      //       console.log('ADDED')
+      //     }
+      //   });
 
-      const seekForce = new Point(desiredVel).sub(unit.vel);
+      unit.vel.set(0,0);
+      // unitVel.add(unitVel);
+      unit.vel.add(desiredVel);
+      console.log(unit.vel.toPolarString());
 
-      // Unit
-      const unitsC = level.getEntitiesNear(unit.loc, unit.radius, e => e !== unit);
+      // console.log(unitVel.len().toFixed(2), unit.vel.len().toFixed(2))
 
-      const collUnitsForce = new Point();
-      if (unitsC.length > 0) {
-        const com = new Point();
-        unitsC.forEach((u, i) => {
-          com.add(u.loc).mul(i === 0 ? 1 : .5)
-        });
-        collUnitsForce.copy(new Point(unit.loc).sub(com));
+      // const steering = new Point();
+      // steering.add(seekForce);
+      // steering.trunc(unit.accel);
+      // steering.add(collUnitsForce.norm());
+      // steering.add(collWallsForce.norm());
+      //
+      // unit.vel.add(steering).trunc(1);
+      //
+      // if (isNaN(unit.vel.x)) debugger
+
+      function intersects(cell, unit) {
+        const halfCellSize = gridWalls.cellSize / 2;
+        const circleDistance = new Point(Math.abs(unit.loc.x - cell.x), Math.abs(unit.loc.y - cell.y));
+
+        if (circleDistance.x > (halfCellSize + unit.radius)) return false;
+        if (circleDistance.y > (halfCellSize + unit.radius)) return false;
+
+        if (circleDistance.x <= (halfCellSize)) return true;
+        if (circleDistance.y <= (halfCellSize)) return true;
+
+        const cornerDistance_sq = Math.pow(circleDistance.x - halfCellSize, 2) + Math.pow(circleDistance.y - halfCellSize, 2);
+
+        return (cornerDistance_sq <= (unit.radius * unit.radius));
       }
-
-      // Wall
-      const collWallsForce = new Point();
-      const wallCheckPoints = Array(4).fill().map((u, i) => new Point()
-        .polar(unit.radius, Math.PI * i * .5)
-        .add(unit.loc))
-        .filter(p => gridWalls.getCellValueByPoint(p) > 255);
-      if (wallCheckPoints.length > 0) {
-        const comW = new Point();
-        wallCheckPoints
-          .forEach((p, i) => {
-            comW.add(p).mul(i === 0 ? 1 : .5)
-          });
-        collWallsForce.copy(new Point(unit.loc).sub(comW));
-      }
-
-      const steering = new Point();
-      steering.add(seekForce);
-      steering.trunc(unit.accel);
-      steering.add(collUnitsForce.norm());
-      steering.add(collWallsForce.norm());
-
-      unit.vel.add(steering).trunc(1);
-
-      if (isNaN(unit.vel.x)) debugger
     }
   }
 };
@@ -93,7 +186,7 @@ export const Orders = {
 
 export default class Unit extends Entity {
   accel = .2;
-  speed = 2.5;
+  speed = 2;
   vel = new Point();
   orders = [];
 
@@ -108,18 +201,22 @@ export default class Unit extends Entity {
       const orderData = OrderTypes[order.type];
       orderData.onUpdate(this.game, this, order);
     });
-    if (this.vel.x !== 0 || this.vel.y !== 0) {
+    if (this.vel.not0()) {
       this.loc.set(
         this.loc.x + this.speed * this.vel.x
         , this.loc.y + this.speed * this.vel.y
       );
+      // this.vel.set(0, 0);
     }
+    // this.gfx.cacheAsBitmap = false;
+    // this.gfx.tint = this.collided ? 0xFF0000 : 0xFFFFFF;
+    // this.gfx.cacheAsBitmap = true;
   }
 
   render() {
     this.gfx.clear();
     this.gfx.lineStyle(1);
-    this.gfx.beginFill(0xFF0000);
+    this.gfx.beginFill(0xFFFFFF);
     this.gfx.drawCircle(0, 0, this.radius);
     this.gfx.endFill();
 
@@ -129,7 +226,7 @@ export default class Unit extends Entity {
     // this.gfx.drawCircle(ahead.x, ahead.y, 2);
     // this.gfx.drawCircle(aheadl.x, aheadl.y, 2);
 
-    this.gfx.lineStyle(1, 0x0000FF);
+    // this.gfx.lineStyle(1, 0x0000FF);
   }
 }
 

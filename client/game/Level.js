@@ -42,6 +42,7 @@ export default class Level {
     this.polywalls.push(new Polygon([100, 100, 200, 100, 200, 200, 100, 200]));
     this.polywalls.push(new Polygon([100, 300, 100, 400, 200, 400, 200, 300]));
     this.polywalls.push(new Polygon([250, 150, 450, 100, 350, 200, 450, 300, 300, 300]));
+    this.polywalls.push(new Polygon([80,0 ,80,200 ,0,200, 0,0]));
 
     this.pixiwalls = this.polywalls.map(p => p.toPIXI());
 
@@ -84,7 +85,7 @@ export default class Level {
   spawn(i) {
     const creep = this.addEntity(Creep);
     creep.id = i;
-    creep.loc.set(40, 40);
+    creep.loc.set(90, 90);
     creep.addOrder(Orders.FOLLOW(this.base));
   }
 
@@ -93,7 +94,7 @@ export default class Level {
   }
 
   getEntitiesNear(point, radius, filter = () => 1) {
-    return this.entites.filter(e => filter(e) && point.dist2(e.loc) < Math.pow(radius + e.radius, 2));
+    return this.entites.filter(e => filter(e) && point.dist2(e.loc) < Math.pow(radius, 2));
   }
 
   render() {
@@ -115,7 +116,7 @@ export default class Level {
       this.wallsGfx.endFill();
     }
 
-    this.gridManager.render(this.gridGfx);
     this.entites.forEach(e => e.render());
+    this.gridManager.render(this.gridGfx);
   }
 }

@@ -130,7 +130,7 @@ export default class Grid {
     //   // }
     // });
     gfx.lineStyle(1, 0x0000FF);
-    console.log(this.cells)
+    // console.log(this.cells)
     ndforEach(this.cells, (cell, v) => {
       if (v) {
         const [nx, ny] = v;

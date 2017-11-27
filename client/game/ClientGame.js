@@ -50,6 +50,7 @@ export default class ClientGame {
     this.renderer.render(this.stage);
 
     window.requestAnimationFrame(this.tick);
+    // setTimeout(this.tick, 250);
   };
 
   update() {
