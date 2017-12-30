@@ -1,3 +1,5 @@
+import KeyCode from "./managers/KeyCode";
+
 export default (game) => {
   game.ui.on('Tower.start', () => {
     const level = game.level;
@@ -11,18 +13,18 @@ export default (game) => {
   game.ui.on('Tower.stop', () => {
     const level = game.level;
     level.stateGfx.position.set(-50, -50);
-    console.log('stop',  level.stateGfx.position)
+    console.log('stop', level.stateGfx.position)
     setTimeout(() => {
-      console.log('stop',  level.stateGfx.position)
+      console.log('stop', level.stateGfx.position)
     }, 2000)
   });
 
 
   game.ui.on('SELECT.click', (e) => {
-  level.stateGfx.position.set(-50, -50);
-  //   const [x, y] = game.level.grid.getCellByPoint(e.data.global);
-  //   game.level.render();
-  //   game.level.grid.renderFF(game.level.gridGfx, game.level.grid.getFF(x + ':' + y));
+    level.stateGfx.position.set(-50, -50);
+    //   const [x, y] = game.level.grid.getCellByPoint(e.data.global);
+    //   game.level.render();
+    //   game.level.grid.renderFF(game.level.gridGfx, game.level.grid.getFF(x + ':' + y));
   });
   game.ui.on('PAINT.click', (e) => {
     const {x, y} = e.data.global;
@@ -59,4 +61,9 @@ export default (game) => {
   game.ui.on('DEBUG', () => {
     game.level.render();
   });
+
+  // game.ui.on('keyup.'+KeyCode.SPACEBAR, () => {
+  //   console.log('space');
+  //   game.tick();
+  // });
 };

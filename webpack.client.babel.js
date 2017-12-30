@@ -15,7 +15,9 @@ console.log('NODE_ENV', process.env.NODE_ENV);
 module.exports = {
   devtool: isDevelopment ? 'eval' : 'source-map'
   , entry: isDevelopment
-    ? ['react-hot-loader/patch'
+    ? [
+      'babel-polyfill'
+      , 'react-hot-loader/patch'
       // , 'webpack-hot-middleware/client'
       , './client/index.jsx']
     : './client/index.jsx'

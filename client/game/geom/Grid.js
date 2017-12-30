@@ -1,20 +1,29 @@
 import ndarray from 'ndarray';
 import ndforEach from 'ndarray-foreach';
-
 import Point from './Point';
+import Cell from './Cell';
+
+import GameData from '../GameData';
+
+const NEAR_4 = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+const NEAR_8 = [[0, -1], [1, 0], [0, 1], [-1, 0], [+1, -1], [+1, +1], [-1, +1], [-1, -1]];
 
 export default class Grid {
-  constructor(key, type, width, height, cellSize) {
-    this.key = key;
+  constructor(type, width, height, cellSize) {
     this.type = type;
     this.cellSize = cellSize;
     this.width = Math.floor(width / this.cellSize);
     this.height = Math.floor(height / this.cellSize);
+    this.cellSize = GameData.c.cellSize;
     this.cells = ndarray([], [this.width, this.height]);
   }
 
-  getCellValueXY(x, y) {
-    return x >= 0 && x < this.width && y >= 0 && y < this.height ? this.cells.get(x, y) : void 0;
+  checkBoundsXY(X, Y) {
+    return X >= 0 && X < this.width && Y >= 0 && Y < this.height;
+  }
+
+  getCellValueXY(X, Y) {
+    return this.checkBoundsXY(X, Y) ? this.cells.get(X, Y) : void 0;
   }
 
   getCellValue(cell) {
@@ -40,29 +49,18 @@ export default class Grid {
     );
   }
 
-  fillByCallback(cb) {
-    ndforEach(this.cells, (cell, v) => {
-      const nv = cb(cell[0] * this.cellSize + this.cellSize / 2, cell[1] * this.cellSize + this.cellSize / 2, v);
-      if (nv != v) {
-        this.setCellValue(cell, nv);
-      }
-    });
+  forEach(cb) {
+    ndforEach(this.cells, cb);
   }
 
-  fillDkstra(gridWall, tx, ty) {
-    const exitCell = [tx, ty];
+  fillDkstra(gridWall, exitCell) {
     const frontier = [exitCell];
     this.setCellValue(exitCell, 0);
     for (let i = 0; i < frontier.length; ++i) {
       const cellFront = frontier[i];
-      const [x, y] = cellFront;
       const distFront = this.getCellValue(cellFront);
-      [
-        [x + 1, y + 0]
-        , [x + 0, y + 1]
-        , [x - 1, y + 0]
-        , [x + 0, y - 1]
-      ].forEach((cellNearFront) => {
+      this.getNear4(cellFront)
+        .forEach((cellNearFront) => {
         const costOfNear = gridWall.getCellValue(cellNearFront);
         const distOfNear = this.getCellValue(cellNearFront);
         if (distOfNear === void 0 && costOfNear !== void 0) {
@@ -76,25 +74,20 @@ export default class Grid {
   }
 
   fillFlowField(gridWall, gridDkstra) {
-    ndforEach(gridDkstra.cells, ([x, y], dist) => {
+    ndforEach(gridDkstra.cells, (cell, dist) => {
       let bestCell = null;
       let minDist = 0;
 
-      const freeN = gridWall.getCellValueXY(x + 0, y - 1) < 255;
-      const freeE = gridWall.getCellValueXY(x + 1, y + 0) < 255;
-      const freeS = gridWall.getCellValueXY(x + 0, y + 1) < 255;
-      const freeW = gridWall.getCellValueXY(x - 1, y + 0) < 255;
+      const [freeN, freeE, freeS, freeW] = this.getNear4(cell).map(near4Cell => gridWall.getCellValue(near4Cell) < 255);
 
-      [
-        [x + 0, y - 1]
-        , [x + 1, y + 0]
-        , [x + 0, y + 1]
-        , [x - 1, y + 0]
-        , (freeN && freeE) && [x + 1, y - 1] // NE
-        , (freeS && freeE) && [x + 1, y + 1] // SE
-        , (freeS && freeW) && [x - 1, y + 1] // SW
-        , (freeN && freeW) && [x - 1, y - 1] // NW
-      ].filter(c => !!c)
+      this.getNear4(cell)
+        .concat([
+            (freeN && freeE) && [cell[0] + 1, cell[1] - 1] // NE
+          , (freeS && freeE) && [cell[0] + 1, cell[1] + 1] // SE
+          , (freeS && freeW) && [cell[0] - 1, cell[1] + 1] // SW
+          , (freeN && freeW) && [cell[0] - 1, cell[1] - 1] // NW
+        ])
+        .filter(c => !!c)
         .forEach((cellNear) => {
           const distOfNear = gridDkstra.getCellValue(cellNear);
           if ((distOfNear - dist) < minDist) {
@@ -103,44 +96,17 @@ export default class Grid {
           }
         });
       if (bestCell !== null) {
-        this.setCellValue([x, y], bestCell);
+        this.setCellValue(cell, new Point(bestCell[0] - cell[0], bestCell[1] - cell[1]).norm());
       }
     });
   }
 
-  renderWall(gfx) {
-    gfx.lineStyle(1, 0x0, 0.1)
-    ndforEach(this.cells, ([x, y], v) => {
-      gfx.beginFill(v < 255 ? 0xFFFFFF : 0x0);
-      gfx.drawRect(x * this.cellSize, y * this.cellSize, this.cellSize, this.cellSize);
-    });
+  getNear4(cell) {
+    return NEAR_4.map(v => [+cell[0] + v[0], +cell[1] + v[1]]);
   }
 
-  renderFlowField(gfx) {
-    // ndforEach(dkstra, ([x, y], v) => {
-    //   const txt = new PIXI.Text(v, {fontSize: this.cellSize / 4});
-    //   txt.position.set(x * this.cellSize, y * this.cellSize);
-    //   gfx.addChild(txt)
-    //
-    //   // const FFv = FF.get(x, y);
-    //   // if (FFv) {
-    //   //   const txt = new PIXI.Text(`${x}:${y}\n(${v})\n[${FFv}]`, {fontSize: this.cellSize / 4});
-    //   //   txt.position.set(x * this.cellSize, y * this.cellSize);
-    //   //   gfx.addChild(txt)
-    //   // }
-    // });
-    gfx.lineStyle(1, 0x0000FF);
-    // console.log(this.cells)
-    ndforEach(this.cells, (cell, v) => {
-      if (v) {
-        const [nx, ny] = v;
-        const a = Math.atan2(ny - cell[1], nx - cell[0]);
-        // console.log(`${x}:${y} => ${nx}:${ny} (${a * 180 / Math.PI})`)
-        const point = this.getPointByCell(cell);
-        gfx.moveTo(point.x, point.y);
-        point.polar(this.cellSize * .5, a);
-        gfx.lineTo(point.x, point.y);
-      }
-    });
+  getNear8(cell) {
+    // return NEAR_8.map(v => [cell[0] + v[0], cell[1] + v[1]]);
+    return NEAR_8.map(v => [+cell[0] + v[0], +cell[1] + v[1]]);
   }
 }

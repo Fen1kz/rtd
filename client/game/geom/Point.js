@@ -20,8 +20,20 @@ export default class Point {
 
   // Chainable
 
+  clone() {
+    return new Point().copy(this);
+  }
+
   copy(p) {
     return this.set(p.x, p.y);
+  }
+
+  abs() {
+    return this.set(Math.abs(this.x), Math.abs(this.y));
+  }
+
+  sign() {
+    return this.set(Math.sign(this.x), Math.sign(this.y));
   }
 
   add(p) {
@@ -40,22 +52,14 @@ export default class Point {
     return this.set(this.x + l * Math.cos(a), this.y + l * Math.sin(a));
   }
 
-  norm() {
-    const len = this.len();
+  norm(len) {
+    if (len === void 0) len = this.len();
     return len > 0 ? this.mul(1 / len) : this;
   }
 
-  norm2(z = 1) {
-    const len = this.len();
-    return len > z ? this.mul(z / len)
-      : this;
-  }
-
-  trunc(c) {
-    return this.set(
-      this.x > 0 ? Math.min(this.x, c) : Math.max(this.x, -c)
-      , this.y > 0 ? Math.min(this.y, c) : Math.max(this.y, -c)
-    );
+  norm1(len) {
+    if (len === void 0) len = this.len();
+    return len > 1 ? this.mul(1 / len) : this;
   }
 
   // Products
@@ -121,8 +125,12 @@ export default class Point {
   //
   // angleTo = (p) => Math.atan2(p.y - this.y, p.x - this.x);
 
+  toString() {
+    return `(${this.x.toFixed(1)};${this.y.toFixed(1)})`;
+  }
+
   toPolarString() {
-    return `(${this.len().toFixed(2)} ${(this.angle() * 180 / Math.PI).toFixed(0)})`
+    return `(${this.len().toFixed(2)} ${(this.angle() * 180 / Math.PI).toFixed(0)})`;
   }
 }
 window.Point = Point;

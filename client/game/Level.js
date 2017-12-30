@@ -1,13 +1,16 @@
 import * as PIXI from 'pixi.js';
-
-import Base from './entites/Base';
-import Entity from './entites/Base';
-import {Orders} from './entites/Unit';
-import Creep from './entites/Creep';
-
 import Polygon from './geom/Polygon';
 import Grid from './geom/Grid';
-import GridManager from './managers/GridManager';
+import GridManager, {GRID_TYPE} from './managers/GridManager';
+
+import Entity from './entites/Entity';
+import Orderable from './behaviors/Orderable';
+import Movable from './behaviors/Movable';
+import Selectable from './behaviors/Selectable';
+
+import Orders from './Orders';
+import GameData from "./GameData";
+
 
 const DRAW_POLYGON_CIRCLE = 5;
 
@@ -15,19 +18,23 @@ export default class Level {
   gfx = new PIXI.Container();
   spawns = [];
 
+  actors = [];
   entites = [];
   polywalls = [];
   wallsGfx = new PIXI.Graphics();
   gridGfx = new PIXI.Graphics();
   stateGfx = new PIXI.Graphics();
+  debugGfx = new PIXI.Graphics();
 
   constructor(game, width, height) {
     this.game = game;
     this.width = width;
     this.height = height;
+    this.cellSize = GameData.c.cellSize;
     this.gfx.addChild(this.gridGfx);
     this.gfx.addChild(this.wallsGfx);
     this.gfx.addChild(this.stateGfx);
+    this.gfx.addChild(this.debugGfx);
 
     this.stateGfx.beginFill(0);
     this.stateGfx.drawCircle(0, 0, 20);
@@ -36,43 +43,62 @@ export default class Level {
   }
 
   start() {
-    this.base = this.addEntity(Base);
-    this.base.loc.set(600, 350);
-
     this.polywalls.push(new Polygon([100, 100, 200, 100, 200, 200, 100, 200]));
     this.polywalls.push(new Polygon([100, 300, 100, 400, 200, 400, 200, 300]));
     this.polywalls.push(new Polygon([250, 150, 450, 100, 350, 200, 450, 300, 300, 300]));
-    this.polywalls.push(new Polygon([80,0 ,80,200 ,0,200, 0,0]));
+    this.polywalls.push(new Polygon([80, 0, 80, 200, 0, 200, 0, 0]));
 
     this.pixiwalls = this.polywalls.map(p => p.toPIXI());
 
-    this.gridManager = new GridManager(this.width, this.height);
+    this.gridManager = new GridManager(this.width, this.height, this.cellSize);
+
+    this.base = this.addEntity('Base');
+    this.base.loc.set(600, 350);
+
     this.recalculate();
-    // this.grid = new Grid(800, 600);
 
     Array(1).fill().forEach((u, i) => this.spawn(i));
 
-    // this.recalculate();
-    this.render();
+    const creep = this.addEntity('Creep');
+    creep.loc.set(350, 300);
   }
 
   recalculate() {
-    this.gridManager.recalculate((x, y, v) => {
+    const isWall = (x, y, v) => {
       for (let i = 0; i < this.pixiwalls.length; ++i) {
         if (this.pixiwalls[i].contains(x, y)) {
           return 1023;
         }
       }
       return 1;
-    });
+    };
+    this.gridManager.clearCache();
+    const wallsGrid = this.gridManager.getWalls();
+    wallsGrid
+      .forEach((cell, value) => {
+        const nv = isWall(cell[0] * this.cellSize + this.cellSize / 2, cell[1] * this.cellSize + this.cellSize / 2, value);
+        if (nv !== value) wallsGrid.setCellValue(cell, nv);
+      })
   }
 
-  addEntity(entityClass) {
-    const entity = new (entityClass)(this.game);
+  addEntity(entityType) {
+    const entity = new Entity(this.game);
+    entity.type = entityType;
+    entity.createActor(this.gfx);
+    entity.actor.debug = new PIXI.Graphics();
+    entity.actor.addChild(entity.actor.debug);
     this.entites.push(entity);
-    this.gfx.addChild(entity.gfx);
-    entity.render();
+    this.actors.push(entity.actor);
     return entity;
+  }
+
+  spawn(i) {
+    const creep = this.addEntity('Creep');
+    creep.id = i;
+    creep.loc.set(150, 250);
+    Movable(creep);
+    Orderable(creep);
+    creep.addOrder(Orders.MOVE(this.base.loc));
   }
 
   addWall(points) {
@@ -82,41 +108,24 @@ export default class Level {
     this.render();
   }
 
-  spawn(i) {
-    const creep = this.addEntity(Creep);
-    creep.id = i;
-    creep.loc.set(90, 90);
-    creep.addOrder(Orders.FOLLOW(this.base));
-  }
-
   update() {
-    this.entites.forEach(e => e.update());
+    this.entites.forEach(e => e.emit('UPDATE'));
+
+    // this.render();
   }
 
   getEntitiesNear(point, radius, filter = () => 1) {
-    return this.entites.filter(e => filter(e) && point.dist2(e.loc) < Math.pow(radius, 2));
+    return this.entites.filter(e => filter(e) && point.dist2(e.loc) < radius * radius);
   }
 
   render() {
+    this.gridGfx.clear();
+    this.gridGfx.removeChildren();
     this.wallsGfx.clear();
     this.wallsGfx.lineStyle(1, 0x0, 0.1);
     this.pixiwalls.forEach(wall => {
       this.wallsGfx.drawPolygon(wall);
     });
-    this.wallsGfx.lineStyle(1);
-    if (this.state.polygon) {
-      const polygon = new Polygon(this.state.polygon);
-      this.wallsGfx.drawPolygon(polygon.toPIXI());
-      polygon.forEachPoint((x, y, i) => {
-        console.log(i, x, y);
-        if (i === 0) this.wallsGfx.beginFill(0xFF0000);
-        else this.wallsGfx.beginFill(0xFFFFFF);
-        this.wallsGfx.drawCircle(x, y, DRAW_POLYGON_CIRCLE);
-      });
-      this.wallsGfx.endFill();
-    }
-
-    this.entites.forEach(e => e.render());
     this.gridManager.render(this.gridGfx);
   }
 }

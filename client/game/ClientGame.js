@@ -4,6 +4,9 @@ import UIManager from "./managers/UIManager";
 import Level from './Level';
 import commands from './commands';
 
+import './actors/CircleActor';
+import './actors/CreepActor';
+
 const WIDTH = 800;
 const HEIGHT = 600;
 
@@ -15,9 +18,7 @@ export default class ClientGame {
     const background = new PIXI.Graphics();
     background.beginFill(0xEEEEEE);
     background.drawRect(0, 0, WIDTH, HEIGHT);
-
     this.stage = new PIXI.Container();
-
     this.stage.addChild(background);
 
     this.ui = new UIManager(this);
@@ -33,15 +34,16 @@ export default class ClientGame {
     this.ui.start(this);
 
     this.level = new Level(this, WIDTH, HEIGHT);
-    this.stage.addChild(this.level.gfx);
-    // this.level.gfx.position.set(50, 50);
     window.level = this.level;
+    this.stage.addChild(this.level.gfx);
 
     this.level.start();
 
     commands(this);
 
     this.tick();
+
+    this.level.render();
   }
 
   tick = () => {

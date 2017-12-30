@@ -1,6 +1,6 @@
 import Unit from './Unit';
 import Point from '../geom/Point';
-import {GRID_TYPE} from '../managers/GridManager';
+import {GRID_TYPE} from '../managers/GridManager2';
 
 export default class Tower extends Unit {
 

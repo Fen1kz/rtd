@@ -185,34 +185,7 @@ export const Orders = {
 };
 
 export default class Unit extends Entity {
-  accel = .2;
-  speed = 2;
-  vel = new Point();
-  orders = [];
-
-  addOrder(order) {
-    const orderData = OrderTypes[order.type];
-    if (orderData.onStart) orderData.onStart(this.game, this, order);
-    this.orders.push(order);
-  }
-
-  update() {
-    this.orders.forEach(order => {
-      const orderData = OrderTypes[order.type];
-      orderData.onUpdate(this.game, this, order);
-    });
-    if (this.vel.not0()) {
-      this.loc.set(
-        this.loc.x + this.speed * this.vel.x
-        , this.loc.y + this.speed * this.vel.y
-      );
-      // this.vel.set(0, 0);
-    }
-    // this.gfx.cacheAsBitmap = false;
-    // this.gfx.tint = this.collided ? 0xFF0000 : 0xFFFFFF;
-    // this.gfx.cacheAsBitmap = true;
-  }
-
+  // asd
   render() {
     this.gfx.clear();
     this.gfx.lineStyle(1);

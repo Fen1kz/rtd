@@ -1,4 +1,5 @@
 import * as PIXI from 'pixi.js'
+import KeyCode from './KeyCode';
 
 class Tool {
   constructor(id, options = {}) {
@@ -23,7 +24,6 @@ class Tool {
     this.events = null;
   }
 }
-
 
 const SELECT = new Tool('SELECT', {hotkey: 49});
 
@@ -73,12 +73,16 @@ export default class UIManager extends PIXI.utils.EventEmitter {
     this.game.stage.interactive = true;
 
     window.document.addEventListener('keyup', (e) => {
-      Object.values(TOOL).some((tool) => {
+      let handled;
+      handled = Object.values(TOOL).some((tool) => {
         if (tool.hotkey === e.keyCode) {
           this.selectTool(tool.id);
           return true;
         }
       });
+      if (!handled) {
+        this.emit('keyup.' + e.keyCode);
+      }
     });
   }
 
