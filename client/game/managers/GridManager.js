@@ -7,6 +7,7 @@ export const GRID_TYPE = {
   , WALL: 'WALL'
   , DKSTRA: 'DKSTRA'
   , FLOWFIELD: 'FLOWFIELD'
+  , VFIELD: 'VFIELD'
   , UNIT: 'UNIT'
 };
 
@@ -48,9 +49,16 @@ export default class GridManager {
           grid.fillDkstra(this.getWalls(), [x, y]);
           console.log('fillingDkstra', grid)
           break;
+        case GRID_TYPE.VFIELD:
+          grid.fillVectorField(this.getWalls(), this.getGrid(this.getGridKey(GRID_TYPE.DKSTRA, [x, y])));
+          // console.log('ff', grid)
+          break;
         case GRID_TYPE.FLOWFIELD:
-          grid.fillFlowField(this.getWalls(), this.getGrid(this.getGridKey(GRID_TYPE.DKSTRA, [x, y])));
-          console.log('ff', grid)
+          grid.fillFlowField(this.getWalls(), this.getGrid(this.getGridKey(GRID_TYPE.VFIELD, [x, y])), [x, y]);
+          for (let i = 0; i < 32; ++i) {
+            grid.fillFlowField(this.getWalls(), this.getGrid(this.getGridKey(GRID_TYPE.FLOWFIELD, [x, y])), [x, y]);
+          }
+          // console.log('ff', grid)
           break;
       }
       return grid;

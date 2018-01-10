@@ -73,7 +73,7 @@ export default class Grid {
     }
   }
 
-  fillFlowField(gridWall, gridDkstra) {
+  fillVectorField(gridWall, gridDkstra) {
     ndforEach(gridDkstra.cells, (cell, dist) => {
       let bestCell = null;
       let minDist = 0;
@@ -98,6 +98,28 @@ export default class Grid {
       if (bestCell !== null) {
         this.setCellValue(cell, new Point(bestCell[0] - cell[0], bestCell[1] - cell[1]).norm());
       }
+    });
+  }
+
+  fillFlowField(gridWall, gridFF, exitCell) {
+    ndforEach(gridFF.cells, (cell, targetVector) => {
+      if (!targetVector) targetVector = new Point();
+      this.setCellValue(cell, targetVector);
+
+      if (cell[0] === exitCell[0] && cell[1] === exitCell[1]) return;
+
+      const near = this.getNear4(cell);
+
+      const isNearWall = near.some(near4Cell => gridWall.getCellValue(near4Cell) >= 255);
+      if (isNearWall) return;
+      if (near.length < 1) return;
+
+      const smoothTargetVector = new Point();
+      near.forEach(nearCell => {
+        smoothTargetVector.add(gridFF.getCellValue(nearCell) || new Point());
+      });
+      smoothTargetVector.norm();
+      this.setCellValue(cell, smoothTargetVector);
     });
   }
 

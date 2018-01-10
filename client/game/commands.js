@@ -48,7 +48,9 @@ export default (game) => {
   game.ui.on('SET_BASE.click', (e) => {
     game.level.base.loc.copy(e.data.global)
     game.level.recalculate();
-    game.level.render();
+    setTimeout(() => {
+      game.level.render();
+    }, 1e3)
   });
 
   game.ui.on('UNIT.click', (e) => {
