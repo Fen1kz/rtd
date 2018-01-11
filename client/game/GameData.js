@@ -1,6 +1,6 @@
 export default {
   c: {
-    cellSize: 20
+    cellSize: 40
   }
   , actor: {
     CircleActor: {}

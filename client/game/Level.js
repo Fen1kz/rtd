@@ -75,9 +75,13 @@ export default class Level {
     this.gridManager.clearCache();
     const wallsGrid = this.gridManager.getWalls();
     wallsGrid
-      .forEach((cell, value) => {
-        const nv = isWall(cell[0] * this.cellSize + this.cellSize / 2, cell[1] * this.cellSize + this.cellSize / 2, value);
-        if (nv !== value) wallsGrid.setCellValue(cell, nv);
+      .forEach((value, cellIdx) => {
+        const nv = isWall(
+          this.gridManager.getX(cellIdx) * this.cellSize + this.cellSize / 2
+          , this.gridManager.getY(cellIdx) * this.cellSize + this.cellSize / 2
+          , value
+        );
+        if (nv !== value) wallsGrid.setCellValue(cellIdx, nv);
       })
   }
 
@@ -119,13 +123,37 @@ export default class Level {
   }
 
   render() {
-    this.gridGfx.clear();
-    this.gridGfx.removeChildren();
     this.wallsGfx.clear();
     this.wallsGfx.lineStyle(1, 0x0, 0.1);
     this.pixiwalls.forEach(wall => {
       this.wallsGfx.drawPolygon(wall);
     });
     this.gridManager.render(this.gridGfx);
+
+    // this.gridGfx.clear();
+    // this.gridGfx.removeChildren();
+    // const gfx = this.gridGfx;
+    // gfx.lineStyle(1, 0x0, 0.1);
+    // const cellToLoc = (cell) => ({
+    //   x: this.gridManager.getX(cell) * this.cellSize
+    //   , y: this.gridManager.getY(cell) * this.cellSize
+    // });
+    // this.gridManager.getWalls().forEach((value, cell) => {
+    //   const {x, y} = cellToLoc(cell);
+    //   gfx.beginFill(value < 255 ? 0xFFFFFF : 0x0);
+    //   gfx.drawRect(x, y, this.cellSize, this.cellSize);
+    // });
+    // for (let gridKey in this.gridManager.gridCacheDist) {
+    //   const grid = this.gridManager.gridCacheDist[gridKey];
+    //   gfx.lineStyle(1, 0x0000FF, 1);
+    //   grid.forEach((value, cell) => {
+    //     if (value) {
+    //       const point = this.gridManager.getPointByCell(cell);
+    //       gfx.moveTo(point.x, point.y);
+    //       gfx.lineTo(point.x + value.x * .5 * this.cellSize, point.y + value.y * .5 * this.cellSize);
+    //     }
+    //   });
+    //   break;
+    // }
   }
 }

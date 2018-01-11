@@ -7,7 +7,6 @@ export const GRID_TYPE = {
   , WALL: 'WALL'
   , DKSTRA: 'DKSTRA'
   , FLOWFIELD: 'FLOWFIELD'
-  , VFIELD: 'VFIELD'
   , UNIT: 'UNIT'
 };
 
@@ -17,89 +16,218 @@ export default class GridManager {
     this.height = height;
     this.cellSize = cellSize;
     this.cellSize2 = cellSize * .5;
-    this.gridCells = new Grid(GRID_TYPE.XY, width, height, this.cellSize);
-    this.gridCells.forEach((cell, i) => {
-      this.gridCells.setCellValue(cell, {x: cell[0], y: cell[1]});
-    });
-    this.gridWalls = new Grid(GRID_TYPE.WALL, width, height, this.cellSize);
-    this.gridCache = {};
+
+    this.WIDTH = Math.floor(width / this.cellSize);
+    this.HEIGHT = Math.floor(height / this.cellSize);
+
+    this.gridWalls = new Grid(this.WIDTH, this.HEIGHT);
+
+    this.gridCacheFF = new Array(this.WIDTH * this.HEIGHT);
+    this.gridCacheDist = new Array(this.WIDTH * this.HEIGHT);
   }
 
-  getCells() {
-    return this.gridCells;
+  getCellByPoint(point) {
+    const x = Math.floor(point.x / this.cellSize);
+    const y = Math.floor(point.y / this.cellSize);
+    return x + y * this.WIDTH;
+  }
+
+  getPointByCell(cell) {
+    return new Point(
+      this.getX(cell) * this.cellSize + this.cellSize / 2
+      , this.getY(cell) * this.cellSize + this.cellSize / 2
+    );
+  }
+
+  isWall(cellIdx) {
+    return this.getWalls().getCellValue(cellIdx) > 255;
+  }
+
+  getX(cellIdx) {
+    return cellIdx % this.WIDTH;
+  }
+
+  getY(cellIdx) {
+    return Math.floor(cellIdx / this.WIDTH);
+  }
+
+  getIdx(x, y) {
+    return x + y * this.WIDTH;
   }
 
   getWalls() {
     return this.gridWalls;
   }
 
-  getGridKey(type, cell) {
-    return type + ':' + cell[0] + ':' + cell[1];
+  getGridFF(cellIdx) {
+    if (this.gridCacheFF[cellIdx]) return this.gridCacheFF[cellIdx];
+    // const tempGrid = new Grid(this.WIDTH, this.HEIGHT);
+    const grid = new Grid(this.WIDTH, this.HEIGHT);
+    this.fillFlowField(grid, this.getWalls(), this.getGridDist(cellIdx));
+    // for (let i = 0; i < 2; ++i) this.smoothGrid(grid, grid, cellIdx);
+    this.gridCacheFF[cellIdx] = grid;
+    return grid;
   }
 
-  getGrid(gridKey) {
-    if (this.gridCache[gridKey]) {
-      return this.gridCache[gridKey];
-    } else {
-      const [type, x, y] = gridKey.split(':');
-      const grid = new Grid(type, this.width, this.height, this.cellSize);
-      this.gridCache[gridKey] = grid;
-      switch (type) {
-        case GRID_TYPE.DKSTRA:
-          grid.fillDkstra(this.getWalls(), [x, y]);
-          console.log('fillingDkstra', grid)
-          break;
-        case GRID_TYPE.VFIELD:
-          grid.fillVectorField(this.getWalls(), this.getGrid(this.getGridKey(GRID_TYPE.DKSTRA, [x, y])));
-          // console.log('ff', grid)
-          break;
-        case GRID_TYPE.FLOWFIELD:
-          grid.fillFlowField(this.getWalls(), this.getGrid(this.getGridKey(GRID_TYPE.VFIELD, [x, y])), [x, y]);
-          for (let i = 0; i < 32; ++i) {
-            grid.fillFlowField(this.getWalls(), this.getGrid(this.getGridKey(GRID_TYPE.FLOWFIELD, [x, y])), [x, y]);
+  getGridDist(cellIdx) {
+    if (this.gridCacheDist[cellIdx]) return this.gridCacheDist[cellIdx];
+    const grid = new Grid(this.WIDTH, this.HEIGHT);
+    this.fillGridDist(grid, this.getWalls(), cellIdx);
+    this.gridCacheDist[cellIdx] = grid;
+    return grid;
+  }
+
+  fillGridDist(gridDist, gridWall, exitIdx) {
+    const frontier = [exitIdx];
+    gridDist.setCellValue(exitIdx, 0);
+    for (let i = 0; i < frontier.length; ++i) {
+      const frontIdx = frontier[i];
+      const distFront = gridDist.getCellValue(frontIdx);
+      this.getNear4(frontIdx)
+        .forEach((frontNeighborIdx) => {
+          const costOfNear = gridWall.getCellValue(frontNeighborIdx);
+          const distOfNear = gridDist.getCellValue(frontNeighborIdx);
+          if (distOfNear === void 0 && costOfNear !== void 0) {
+            gridDist.setCellValue(frontNeighborIdx, distFront + costOfNear);
+            if (!this.isWall(frontNeighborIdx)) {
+              frontier.push(frontNeighborIdx);
+            }
           }
-          // console.log('ff', grid)
-          break;
-      }
-      return grid;
+        });
     }
   }
 
+  fillFlowField(gridFF, gridWall, gridDist) {
+    gridDist.forEach((dist, cellIdx) => {
+      let bestCell = null;
+      let minDist = 0;
+
+      const near4 = this.getNear4(cellIdx);
+
+      const [freeN, freeE, freeS, freeW] = near4.map(nearCellIdx => !this.isWall(cellIdx));
+
+      const X = this.getX(cellIdx);
+      const Y = this.getY(cellIdx);
+
+      near4
+        .concat([
+          (freeN && freeE) && this.checkXY(X + 1, Y - 1) && this.getIdx(X + 1, Y - 1) // NE
+          , (freeS && freeE) && this.checkXY(X + 1, Y + 1) && this.getIdx(X + 1, Y + 1) // SE
+          , (freeS && freeW) && this.checkXY(X - 1, Y + 1) && this.getIdx(X - 1, Y + 1) // SW
+          , (freeN && freeW) && this.checkXY(X - 1, Y - 1) && this.getIdx(X - 1, Y - 1) // NW
+        ])
+        .filter(c => !!c)
+        .forEach((cellNear) => {
+          const distOfNear = gridDist.getCellValue(cellNear);
+          if ((distOfNear - dist) < minDist) {
+            bestCell = cellNear;
+            minDist = (distOfNear - dist);
+          }
+        });
+
+      if (bestCell !== null) {
+        gridFF.setCellValue(cellIdx, new Point(this.getX(bestCell) - this.getX(cellIdx), this.getY(bestCell) - this.getY(cellIdx)).norm());
+      }
+    });
+  }
+
+  smoothGrid(grid, gridFF, exitCellIdx) {
+    gridFF.forEach((targetVector, cellIdx) => {
+      if (!targetVector) targetVector = new Point();
+      grid.setCellValue(cellIdx, targetVector);
+
+      if (cellIdx === exitCellIdx) return;
+
+      const near = this.getNear8(cellIdx);
+
+      const isNearWall = near.some(adjCell => this.isWall(adjCell));
+      if (isNearWall) return;
+      if (near.length < 1) return;
+
+      const smoothTargetVector = new Point();
+      near.forEach(nearCell => {
+        smoothTargetVector.add(gridFF.getCellValue(nearCell) || new Point());
+      });
+      smoothTargetVector.norm();
+      grid.setCellValue(cellIdx, smoothTargetVector);
+    });
+  }
+
+  checkXY(X, Y) {
+    return X >= 0 && X < this.WIDTH && Y >= 0 && Y < this.HEIGHT;
+  }
+
+  getNear4(cellIdx) {
+    // https://jsperf.com/get-near-4
+    const x = this.getX(cellIdx);
+    const y = this.getY(cellIdx);
+    const result = [];
+    if (this.checkXY(x, y - 1)) result.push(this.getIdx(x, y - 1));
+    if (this.checkXY(x, y + 1)) result.push(this.getIdx(x, y + 1));
+    if (this.checkXY(x - 1, y)) result.push(this.getIdx(x - 1, y));
+    if (this.checkXY(x + 1, y)) result.push(this.getIdx(x + 1, y));
+    return result;
+  }
+
+  getNear8(cellIdx) {
+    const x = this.getX(cellIdx);
+    const y = this.getY(cellIdx);
+    const result = [];
+    if (this.checkXY(x, y - 1)) result.push(this.getIdx(x, y - 1));
+    if (this.checkXY(x - 1, y)) result.push(this.getIdx(x - 1, y));
+    if (this.checkXY(x, y + 1)) result.push(this.getIdx(x, y + 1));
+    if (this.checkXY(x + 1, y)) result.push(this.getIdx(x + 1, y));
+    if (this.checkXY(x - 1, y - 1)) result.push(this.getIdx(x - 1, y - 1));
+    if (this.checkXY(x - 1, y + 1)) result.push(this.getIdx(x - 1, y + 1));
+    if (this.checkXY(x + 1, y - 1)) result.push(this.getIdx(x + 1, y - 1));
+    if (this.checkXY(x + 1, y + 1)) result.push(this.getIdx(x + 1, y + 1));
+    return result;
+  }
+
   clearCache() {
-    this.gridCache = {};
+    this.gridCacheDist = {};
+    this.gridCacheFF = {};
   }
 
 
   render(gfx) {
-    const cellToLoc = (cell) => ({x: cell[0] * this.cellSize, y: cell[1] * this.cellSize});
-    const cellCenterToLoc = (cell) => ({x: (cell[0] + .5) * this.cellSize, y: (cell[1] + .5) * this.cellSize});
+    gfx.clear();
+    gfx.removeChildren();
+
+    const cellToLoc = (cell) => ({x: this.getX(cell) * this.cellSize, y: this.getY(cell) * this.cellSize});
+    const cellCenterToLoc = (cell) => ({
+      x: (this.getX(cell) + .5) * this.cellSize,
+      y: (this.getY(cell) + .5) * this.cellSize
+    });
+
     gfx.lineStyle(1, 0x0, 0.1);
-    this.gridWalls.forEach((cell, value) => {
+    this.gridWalls.forEach((value, cell) => {
       const {x, y} = cellToLoc(cell);
       gfx.beginFill(value < 255 ? 0xFFFFFF : 0x0);
       gfx.drawRect(x, y, this.cellSize, this.cellSize);
     });
 
-    for (let gridKey in this.gridCache) {
-      const grid = this.gridCache[gridKey];
-      if (grid.type === GRID_TYPE.DKSTRA) {
-        grid.forEach((cell, value) => {
-          const point = grid.getPointByCell(cell);
-          const text = new PIXI.Text(value, {fill: 0xAAAAFF, fontSize: this.cellSize / 3, align: 'center'});
-          text.anchor.set(0.5);
-          text.position.set(point.x, point.y);
-          gfx.addChild(text);
-        });
-      } else if (grid.type === GRID_TYPE.FLOWFIELD) {
-        gfx.lineStyle(1, 0x0000FF, 1);
-        grid.forEach((cell, value) => {
-          if (value) {
-            const point = grid.getPointByCell(cell);
-            gfx.moveTo(point.x, point.y);
-            gfx.lineTo(point.x + value.x * .5 * this.cellSize, point.y + value.y * .5 * this.cellSize);
-          }
-        });
-      }
+    for (let gridKey in this.gridCacheDist) {
+      const grid = this.gridCacheDist[gridKey];
+      grid.forEach((value, cell) => {
+        const point = this.getPointByCell(cell);
+        const text = new PIXI.Text(value, {fill: 0xAAAAFF, fontSize: this.cellSize / 3, align: 'center'});
+        text.anchor.set(0.5);
+        text.position.set(point.x, point.y);
+        gfx.addChild(text);
+      });
+    }
+
+    for (let gridKey in this.gridCacheFF) {
+      const grid = this.gridCacheFF[gridKey];
+      gfx.lineStyle(1, 0x0000FF, 1);
+      grid.forEach((value, cell) => {
+        if (value) {
+          const point = this.getPointByCell(cell);
+          gfx.moveTo(point.x, point.y);
+          gfx.lineTo(point.x + value.x * .5 * this.cellSize, point.y + value.y * .5 * this.cellSize);
+        }
+      });
     }
   }
 }

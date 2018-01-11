@@ -17,14 +17,13 @@ export default {
   MOVE: function (game, unit, data) {
     const gridManager = game.level.gridManager;
 
-    const targetCell = gridManager.getCells().getCellByPoint(data.point);
+    const targetCellIndex = gridManager.getCellByPoint(data.point);
+    const unitCell = gridManager.getCellByPoint(unit.loc);
 
-    const ffGridKey = gridManager.getGridKey(GRID_TYPE.FLOWFIELD, targetCell);
-    const ffGrid = gridManager.getGrid(ffGridKey);
-    const unitCell = ffGrid.getCellByPoint(unit.loc);
+    const ffGrid = gridManager.getGridFF(targetCellIndex);
     const unitCellMaxDistance = 2 * (gridManager.cellSize2 + unit.speed + unit.radius) * (gridManager.cellSize2 + unit.speed + unit.radius);
-    const unitPossibleCells = ffGrid.getNear8(unitCell)
-      .filter(cell => ffGrid.getPointByCell(cell).dist2(unit.loc) <= unitCellMaxDistance);
+    const unitPossibleCells = gridManager.getNear8(unitCell)
+      .filter(cell => gridManager.getPointByCell(cell).dist2(unit.loc) <= unitCellMaxDistance);
     // console.log(unitCellMaxDistance
     //   , unitCell
     //   , ffGrid.getNear8(unitCell).slice(0).map(c => c.concat([ffGrid.getPointByCell(c).dist2(unit.loc)]))
@@ -101,24 +100,21 @@ export default {
       }
     }
 
-    const unitVelocity = new Point()
+    const unitNextVelocity = new Point()
       .add(forceTarget)
       .add(forceWallLookahead)
       .add(forceUnits)
-      .mul(unit.speed);
+      .mul(.2);
 
-    // const unitVelocity = new Point()
-    //   .add(unit.vel)
-    //   .add(unitAcceleration)
-    //   .norm()
-    //   .mul(unit.speed);
+    unit.vel.add(unitNextVelocity);
+    unit.vel.normTrim(1);
+    if (unit.vel.len() > Math.sqrt((2+2)*(2+2))) debugger;
 
-    // unit.vel = unitVelocity;
 
     // await awaitSpacebar(game);
 
-    unit.loc.add(unitVelocity);
-    unit.actor.rotation = Math.atan2(unitVelocity.y, unitVelocity.x);
+    unit.loc.add(unit.vel);
+    unit.actor.rotation = Math.atan2(unit.vel.y, unit.vel.x);
 
     const forceWallDist = getNearestWallDistance(gridManager, unitPossibleCells, unit.loc, unit.radius, unit);
 
@@ -129,7 +125,9 @@ export default {
 
     // await awaitSpacebar(game);
 
-    if (forceWallDist.not0) {
+    if (forceWallDist.not0()) {
+      unit.vel.set(0,0);
+      // console.log(forceWallDist);
       unit.loc.add(forceWallDist);
     }
 
@@ -173,9 +171,9 @@ const getNearestWallDistance = (gridManager, unitPossibleCells, testLoc, unitRad
   const gridWalls = gridManager.getWalls();
   // game.level.debugGfx.clear();
   unitPossibleCells
-    .filter((cell) => gridWalls.getCellValue(cell) > 255)
+    .filter((cell) => gridManager.isWall(cell))
     .forEach((cell) => {
-      const cellLoc = gridWalls.getPointByCell(cell);
+      const cellLoc = gridManager.getPointByCell(cell);
       if (Geom.checkIsectRectCircle(cellLoc, gridManager.cellSize2, testLoc, unitRadius)) {
         const unit2cl = testLoc.clone().sub(cellLoc);
         const unit2clAbs = unit2cl.clone().abs();

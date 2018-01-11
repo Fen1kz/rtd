@@ -62,6 +62,12 @@ export default class Point {
     return len > 1 ? this.mul(1 / len) : this;
   }
 
+  normTrim(maxLen) {
+    const len = this.len();
+    const angle = this.angle();
+    return this.set(0, 0).polar(len > maxLen ? maxLen : len, angle);
+  }
+
   // Products
 
   len() {

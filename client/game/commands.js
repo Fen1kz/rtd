@@ -46,11 +46,11 @@ export default (game) => {
   });
 
   game.ui.on('SET_BASE.click', (e) => {
-    game.level.base.loc.copy(e.data.global)
+    game.level.base.loc.copy(e.data.global);
     game.level.recalculate();
-    setTimeout(() => {
-      game.level.render();
-    }, 1e3)
+    game.level.gridManager.clearCache();
+    game.level.gridManager.getGridFF(game.level.gridManager.getCellByPoint(e.data.global));
+    game.level.render();
   });
 
   game.ui.on('UNIT.click', (e) => {
